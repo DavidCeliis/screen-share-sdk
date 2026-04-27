@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "build:js": "tsup src/screen-share-sdk-js.ts --format iife --globalName ScreenShareSDK --outDir dist --minify --no-dts",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
   },
   "dependencies": {

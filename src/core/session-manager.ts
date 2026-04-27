@@ -161,7 +161,7 @@ export class ScreenShareSessionManager {
     const videoTrack = stream.getVideoTracks()[0];
     videoTrack?.addEventListener("ended", () => {
       this.endSession("user_stopped");
-    });
+    }, { once: true });
 
     const session: ScreenShareSession = {
       sessionId,
@@ -173,8 +173,11 @@ export class ScreenShareSessionManager {
     this.currentSession = session;
     this.config.onSessionStart?.(sessionId);
 
+    let disconnectFired = false;
     this.adapter.onDisconnect(() => {
-      this.endSession("remote_disconnect");
+      if (disconnectFired) return;
+      disconnectFired = true;
+      this.endSession('remote_disconnect');
     });
 
     return session;
