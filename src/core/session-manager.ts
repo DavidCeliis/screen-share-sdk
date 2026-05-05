@@ -68,16 +68,13 @@ export class ScreenShareSessionManager {
   private peerConnection: RTCPeerConnection | null = null;
   private currentSession: ScreenShareSession | null = null;
   private existingConnection: unknown;
+  private pendingCandidates: RTCIceCandidateInit[] = [];
 
   constructor(config: ScreenShareConfig, existingConnection?: unknown) {
     this.config = config;
     this.existingConnection = existingConnection;
   }
 
-  /**
-   * Vrátí efektivní mode který bude použit pro requestScreen().
-   * Užitečné pro UI — podle toho se rozhodne jestli zobrazit "Select screen" tlačítko.
-   */
   getEffectiveMode(): CurrentTabSupport {
     if (this.config.currentTab && this.config.currentTab !== "none") {
       return this.config.currentTab as CurrentTabSupport;
@@ -142,10 +139,9 @@ export class ScreenShareSessionManager {
     this.adapter = createAdapter(this.config, this.existingConnection);
     await this.adapter.connect();
 
-    let sessionId: string;
+    const role = this.config.role ?? "client";
     try {
-      const result = await this.adapter.joinSession(code);
-      sessionId = result.sessionId;
+      await this.adapter.joinSession(code, role);
     } catch (err: unknown) {
       const sdkErr = err as ScreenShareError;
       throw this.makeError(
@@ -154,8 +150,10 @@ export class ScreenShareSessionManager {
       );
     }
 
+    this.pendingCandidates = [];
+
     if (!this.config.testMode) {
-      await this.setupWebRTC(stream, sessionId);
+      await this.setupWebRTC(stream, code);
     }
 
     const videoTrack = stream.getVideoTracks()[0];
@@ -164,14 +162,18 @@ export class ScreenShareSessionManager {
     }, { once: true });
 
     const session: ScreenShareSession = {
-      sessionId,
+      sessionId: code,
       stream,
       isActive: true,
       stop: () => this.endSession("user_stopped"),
     };
 
     this.currentSession = session;
-    this.config.onSessionStart?.(sessionId);
+
+    if (this.config.testMode) {
+      this.config.onSessionStart?.(code);
+    }
+    // In non-testMode, onSessionStart is called from setupWebRTC when state === "connected"
 
     let disconnectFired = false;
     this.adapter.onDisconnect(() => {
@@ -191,6 +193,17 @@ export class ScreenShareSessionManager {
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
 
+    this.peerConnection.onconnectionstatechange = () => {
+      if (!this.peerConnection) return;
+      const state = this.peerConnection.connectionState;
+
+      if (state === "failed" || state === "disconnected") {
+        this.endSession("error");
+      } else if (state === "connected") {
+        this.config.onSessionStart?.(sessionId);
+      }
+    };
+
     stream.getTracks().forEach((track) => {
       this.peerConnection!.addTrack(track, stream);
     });
@@ -202,15 +215,22 @@ export class ScreenShareSessionManager {
     };
 
     this.adapter!.onCandidate(async (candidateInit) => {
-      await this.peerConnection?.addIceCandidate(
-        new RTCIceCandidate(candidateInit),
-      );
+      if (this.peerConnection?.remoteDescription && this.peerConnection.remoteDescription.type) {
+        await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidateInit));
+      } else {
+        this.pendingCandidates.push(candidateInit);
+      }
     });
 
     this.adapter!.onAnswer(async (answer) => {
       await this.peerConnection?.setRemoteDescription(
         new RTCSessionDescription(answer),
       );
+      
+      for (const candidateInit of this.pendingCandidates) {
+        await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidateInit));
+      }
+      this.pendingCandidates = [];
     });
 
     const offer = await this.peerConnection.createOffer();
@@ -218,12 +238,6 @@ export class ScreenShareSessionManager {
     await this.adapter!.sendOffer(sessionId, offer);
   }
 
-  /**
-   * Vymění video track bez přerušení SignalR/WebRTC.
-   * RTCRtpSender.replaceTrack() pošle nový video na druhý konec okamžitě,
-   * bez renegotiace — agent nepozná přechod.
-   * V testMode je no-op (žádné WebRTC).
-   */
   async replaceVideoTrack(newTrack: MediaStreamTrack): Promise<void> {
     if (this.config.testMode) return;
     if (!this.peerConnection) {
@@ -243,10 +257,12 @@ export class ScreenShareSessionManager {
   ): void {
     if (!this.currentSession?.isActive) return;
 
+    const sessionCode = this.currentSession.sessionId;
     this.currentSession.stream?.getTracks().forEach((t) => t.stop());
     this.peerConnection?.close();
     this.peerConnection = null;
-    this.adapter?.disconnect().catch(() => {});
+    this.pendingCandidates = [];
+    this.adapter?.disconnect(sessionCode).catch(() => {});
     this.adapter = null;
 
     if (this.currentSession) {

@@ -25,6 +25,9 @@ export interface ScreenShareConfig {
    */
   currentTab?: "preferCurrentTab" | "selfBrowserSurface" | "manual" | "none";
 
+  /** 'client' = sdílí obrazovku, 'agent' = sleduje (default: 'client') */
+  role?: "agent" | "client";
+
   /** Called when screen share session starts */
   onSessionStart?: (sessionId: string) => void;
 
@@ -53,6 +56,33 @@ export interface ScreenShareSession {
   stream: MediaStream | null;
   isActive: boolean;
   stop: () => void;
+}
+
+export interface ViewerConfig {
+  /** SignalR hub URL. Required unless using testMode. */
+  hubUrl?: string;
+  /** Base URL for REST API (e.g. https://example.com). Required unless using testMode. */
+  apiUrl?: string;
+  testMode?: boolean;
+  testModeDelay?: number;
+  onSessionStart?: (code: string) => void;
+  onSessionEnd?: (reason: "user_stopped" | "remote_disconnect" | "error") => void;
+  onError?: (error: ScreenShareError) => void;
+}
+
+export type ViewerStatus =
+  | "idle"
+  | "registering"
+  | "waiting"
+  | "connecting"
+  | "viewing"
+  | "error";
+
+export interface ViewerState {
+  status: ViewerStatus;
+  code: string | null;
+  stream: MediaStream | null;
+  error: ScreenShareError | null;
 }
 
 export type ScreenShareStatus =

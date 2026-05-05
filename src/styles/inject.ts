@@ -362,6 +362,152 @@ const STYLES = `
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
+
+/* ─── Toast ──────────────────────────────────────────────────── */
+
+.sssdk-toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+.sssdk-toast {
+  background: #0f0f14;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #e8e8f0;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  animation: sssdk-toast-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.sssdk-toast.sssdk-toast-warning {
+  border-color: rgba(251,146,60,0.3);
+}
+
+.sssdk-toast.sssdk-toast-error {
+  border-color: rgba(239,68,68,0.3);
+}
+
+.sssdk-toast-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sssdk-toast-warning .sssdk-toast-dot { background: #fb923c; }
+.sssdk-toast-error .sssdk-toast-dot { background: #ef4444; }
+
+@keyframes sssdk-toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sssdk-toast-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(8px) scale(0.95); }
+}
+
+/* ─── Viewer / Agent side ─────────────────────────────────────── */
+
+.sssdk-viewer-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0;
+  padding: 24px 16px;
+}
+
+.sssdk-viewer-code-display {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.sssdk-viewer-code-digit {
+  width: 52px;
+  height: 58px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(59,130,246,0.5);
+  background: rgba(59,130,246,0.08);
+  color: #e8e8f0;
+  font-size: 26px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.sssdk-viewer-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #888;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 20px;
+}
+
+.sssdk-viewer-copy-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: #ccc;
+}
+
+.sssdk-viewer-waiting-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #555;
+  font-size: 13px;
+}
+
+.sssdk-waiting-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.sssdk-waiting-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3b82f6;
+  animation: sssdk-dot-bounce 1.2s ease infinite;
+}
+
+.sssdk-waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+.sssdk-waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes sssdk-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+  40% { transform: translateY(-5px); opacity: 1; }
+}
 `;
 
 let injected = false;
@@ -373,4 +519,29 @@ export function injectStyles(): void {
   style.setAttribute("data-sssdk", "1");
   style.textContent = STYLES;
   document.head.appendChild(style);
+}
+
+export function showToast(
+  message: string,
+  type: "warning" | "error" = "warning",
+  duration = 5000,
+): void {
+  if (typeof document === "undefined") return;
+
+  let container = document.querySelector<HTMLElement>(".sssdk-toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "sssdk-toast-container";
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement("div");
+  toast.className = `sssdk-toast sssdk-toast-${type}`;
+  toast.innerHTML = `<div class="sssdk-toast-dot"></div><span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = "sssdk-toast-out 0.3s ease forwards";
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
 }

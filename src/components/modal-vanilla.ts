@@ -1,6 +1,6 @@
 // src/components/modal-vanilla.ts
 
-import { injectStyles } from '../styles/inject';
+import { injectStyles, showToast } from '../styles/inject';
 import { ScreenShareSessionManager } from '../core/session-manager';
 import type { ScreenShareConfig, ScreenShareStatus } from '../core/types';
 
@@ -52,6 +52,11 @@ export class ScreenShareModal {
         this.stream = null;
         opts.onSessionEnd?.(reason);
         opts.config?.onSessionEnd?.(reason);
+        if (reason === 'remote_disconnect') {
+          showToast('Druhá strana ukončila spojení', 'warning');
+        } else if (reason === 'error') {
+          showToast('Spojení bylo neočekávaně přerušeno', 'error');
+        }
         this._closeOverlay();
       },
     };
@@ -320,6 +325,7 @@ export class ScreenShareModal {
     try {
       await this.manager.startSession(this.stream, code);
       this.lastCode = code;
+      this.showWaitingForP2P();
     } catch (err: unknown) {
       const e = err as { message?: string };
       this.showError(e.message ?? 'Nepodařilo se připojit');
@@ -393,6 +399,15 @@ export class ScreenShareModal {
     btn.innerHTML = `<div class="sssdk-spinner"></div> Připojuji…`;
     const t = document.getElementById('sssdk-title-text');
     if (t) t.textContent = 'Připojuji…';
+  }
+
+  private showWaitingForP2P(): void {
+    const btn = document.getElementById('sssdk-connect-btn') as HTMLButtonElement | null;
+    if (btn) {
+      btn.innerHTML = `<div class="sssdk-spinner"></div> Navazuji P2P spojení…`;
+    }
+    const t = document.getElementById('sssdk-title-text');
+    if (t) t.textContent = 'Navazuji P2P spojení…';
   }
 
   private resetConnectBtn(): void {

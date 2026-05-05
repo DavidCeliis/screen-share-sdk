@@ -1,11 +1,10 @@
 // Public API of screen-share-sdk
 
 // ─── React ─────────────────────────────────────────────────────────
-// Import only in React environments. Tree-shaking will exclude these
-// automatically if React is not present in the consuming project.
 export { ScreenShareButton } from "./components/ScreenShareButton";
 export type { ScreenShareButtonProps } from "./components/ScreenShareButton";
 export { useScreenShare } from "./components/use-screen-share";
+export { useScreenView } from "./components/use-screen-view";
 
 // ─── Vanilla JS ─────────────────────────────────────────────
 export { createScreenShareButton } from "./components/button-vanilla";
@@ -13,8 +12,14 @@ export type { VanillaButtonOptions } from "./components/button-vanilla";
 export { ScreenShareModal } from "./components/modal-vanilla";
 export type { VanillaModalOptions } from "./components/modal-vanilla";
 
+export { createScreenViewButton } from "./components/viewer-button-vanilla";
+export type { ViewerButtonOptions } from "./components/viewer-button-vanilla";
+export { ScreenViewModal } from "./components/viewer-modal-vanilla";
+export type { ViewerModalOptions } from "./components/viewer-modal-vanilla";
+
 // ─── Core / advanced usage ─────────────────────────────────────────────
 export { ScreenShareSessionManager } from "./core/session-manager";
+export { ScreenViewSessionManager } from "./core/viewer-session-manager";
 export {
   TestModeAdapter,
   RealSignalRAdapter,
@@ -28,4 +33,7 @@ export type {
   ScreenShareSession,
   ScreenShareState,
   ScreenShareStatus,
+  ViewerConfig,
+  ViewerStatus,
+  ViewerState,
 } from "./core/types";

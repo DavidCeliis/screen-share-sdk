@@ -2,16 +2,15 @@ import type { ScreenShareConfig, ScreenShareError } from "../core/types";
 
 export interface SignalRAdapter {
   connect(): Promise<void>;
-  joinSession(code: string): Promise<{ sessionId: string }>;
-  sendOffer(sessionId: string, offer: RTCSessionDescriptionInit): Promise<void>;
-  sendCandidate(
-    sessionId: string,
-    candidate: RTCIceCandidateInit,
-  ): Promise<void>;
+  joinSession(code: string, role: "agent" | "client"): Promise<void>;
+  sendOffer(code: string, offer: RTCSessionDescriptionInit): Promise<void>;
+  sendAnswer(code: string, answer: RTCSessionDescriptionInit): Promise<void>;
+  sendCandidate(code: string, candidate: RTCIceCandidateInit): Promise<void>;
+  onOffer(callback: (sdp: string) => void): void;
   onAnswer(callback: (answer: RTCSessionDescriptionInit) => void): void;
   onCandidate(callback: (candidate: RTCIceCandidateInit) => void): void;
   onDisconnect(callback: () => void): void;
-  disconnect(): Promise<void>;
+  disconnect(code?: string): Promise<void>;
 }
 
 // ─── TEST MODE ADAPTER ──────────────────────────────────────────────────────
@@ -29,30 +28,36 @@ export class TestModeAdapter implements SignalRAdapter {
     console.info("[ScreenShareSDK] TestMode: SignalR connection simulated");
   }
 
-  async joinSession(code: string): Promise<{ sessionId: string }> {
+  async joinSession(code: string, role: "agent" | "client"): Promise<void> {
     await sleep(this.delay);
     if (code === "000000") {
       throw makeError("INVALID_CODE", "Test: code 000000 always fails");
     }
-    const sessionId = `test-session-${code}-${Date.now()}`;
-    console.info(`[ScreenShareSDK] TestMode: joined session ${sessionId}`);
-    return { sessionId };
+    console.info(`[ScreenShareSDK] TestMode: ${role} joined session ${code}`);
   }
 
   async sendOffer(
-    _sessionId: string,
+    _code: string,
     _offer: RTCSessionDescriptionInit,
   ): Promise<void> {
     await sleep(200);
   }
 
+  async sendAnswer(
+    _code: string,
+    _answer: RTCSessionDescriptionInit,
+  ): Promise<void> {
+    await sleep(200);
+  }
+
   async sendCandidate(
-    _sessionId: string,
+    _code: string,
     _candidate: RTCIceCandidateInit,
   ): Promise<void> {}
 
+  onOffer(_callback: (sdp: string) => void): void {}
+
   onAnswer(callback: (answer: RTCSessionDescriptionInit) => void): void {
-    // Simulate an answer after a short delay
     setTimeout(() => {
       callback({ type: "answer", sdp: "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\n" });
     }, 500);
@@ -64,7 +69,7 @@ export class TestModeAdapter implements SignalRAdapter {
     this.disconnectCallbacks.push(callback);
   }
 
-  async disconnect(): Promise<void> {
+  async disconnect(_code?: string): Promise<void> {
     this.disconnectCallbacks.forEach((cb) => cb());
   }
 }
@@ -75,6 +80,7 @@ export class RealSignalRAdapter implements SignalRAdapter {
   private hubUrl: string;
   private connection: unknown = null;
   private HubConnectionBuilder: unknown = null;
+  private disconnectCallback?: () => void;
 
   constructor(hubUrl: string, existingConnection?: unknown) {
     this.hubUrl = hubUrl;
@@ -85,72 +91,115 @@ export class RealSignalRAdapter implements SignalRAdapter {
 
   private async loadSignalR() {
     if (this.HubConnectionBuilder) return;
-    // Dynamically import so it's only loaded when real mode is used
     const signalR = await import("@microsoft/signalr");
     this.HubConnectionBuilder = signalR.HubConnectionBuilder;
   }
 
   async connect(): Promise<void> {
-    if (this.connection) return; // reuse existing
+    if (this.connection) return;
     await this.loadSignalR();
     const { HubConnectionBuilder, LogLevel } =
       await import("@microsoft/signalr");
+
     this.connection = new HubConnectionBuilder()
       .withUrl(this.hubUrl)
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
       .build();
+
+    (this.connection as any).on("Paired", () => {});
+    (this.connection as any).on("LoginOk", () => {});
+    (this.connection as any).on("Error", (msg: string) => {
+      console.warn("[ScreenShareSDK] Server:", msg);
+    });
+    (this.connection as any).on("SessionEnded", () => {
+      if (this.disconnectCallback) {
+        this.disconnectCallback();
+      }
+    });
+
     await (this.connection as any).start();
   }
 
-  async joinSession(code: string): Promise<{ sessionId: string }> {
-    const result = await (this.connection as any).invoke("JoinSession", code);
-    if (!result?.sessionId) {
-      throw makeError("INVALID_CODE", "Server rejected the code");
-    }
-    return result;
+  async joinSession(code: string, role: "agent" | "client"): Promise<void> {
+    const method = role === "agent" ? "AgentLogin" : "ClientLogin";
+    await (this.connection as any).invoke(method, code);
   }
 
   async sendOffer(
-    sessionId: string,
+    code: string,
     offer: RTCSessionDescriptionInit,
   ): Promise<void> {
-    await (this.connection as any).invoke(
-      "SendOffer",
-      sessionId,
-      JSON.stringify(offer),
-    );
+    await (this.connection as any).send("SendOffer", code, offer.sdp);
+  }
+
+  async sendAnswer(
+    code: string,
+    answer: RTCSessionDescriptionInit,
+  ): Promise<void> {
+    await (this.connection as any).send("SendAnswer", code, answer.sdp);
   }
 
   async sendCandidate(
-    sessionId: string,
+    code: string,
     candidate: RTCIceCandidateInit,
   ): Promise<void> {
-    await (this.connection as any).invoke(
-      "SendCandidate",
-      sessionId,
+    await (this.connection as any).send(
+      "SendIceCandidate",
+      code,
       JSON.stringify(candidate),
     );
   }
 
+  onOffer(callback: (sdp: string) => void): void {
+    (this.connection as any).on("ReceiveOffer", (sdp: string) => {
+      callback(sdp);
+    });
+  }
+
   onAnswer(callback: (answer: RTCSessionDescriptionInit) => void): void {
-    (this.connection as any).on("ReceiveAnswer", (answerJson: string) => {
-      callback(JSON.parse(answerJson));
+    (this.connection as any).on("ReceiveAnswer", (sdp: string) => {
+      callback({ type: "answer", sdp });
     });
   }
 
   onCandidate(callback: (candidate: RTCIceCandidateInit) => void): void {
-    (this.connection as any).on("ReceiveCandidate", (candidateJson: string) => {
-      callback(JSON.parse(candidateJson));
-    });
+    (this.connection as any).on(
+      "ReceiveIceCandidate",
+      (candidateJson: string) => {
+        try {
+          const parsed = JSON.parse(candidateJson);
+
+          console.log("[WebRTC] Přijatý ICE kandidát:", parsed);
+
+          if (!parsed || !parsed.candidate) {
+            return;
+          }
+
+          if (!parsed.candidate.startsWith("candidate:")) {
+            parsed.candidate = "candidate:" + parsed.candidate;
+          }
+
+          callback(parsed);
+        } catch (err) {
+          console.error("[WebRTC] Chyba při parsování ICE kandidáta:", err);
+        }
+      },
+    );
   }
 
   onDisconnect(callback: () => void): void {
+    this.disconnectCallback = callback;
     (this.connection as any).onclose(callback);
   }
 
-  async disconnect(): Promise<void> {
+  async disconnect(code?: string): Promise<void> {
     if (this.connection) {
+      if (code) {
+        await (this.connection as any)
+          .invoke("EndCommunication", code)
+          .catch(() => {});
+      }
       await (this.connection as any).stop();
     }
   }
