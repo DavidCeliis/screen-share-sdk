@@ -76,6 +76,10 @@ export class ScreenShareSessionManager {
   }
 
   getEffectiveMode(): CurrentTabSupport {
+    // Non-browser surface → always standard picker, never auto-capture current tab
+    if (this.config.displaySurface && this.config.displaySurface !== "browser") {
+      return "manual";
+    }
     if (this.config.currentTab && this.config.currentTab !== "none") {
       return this.config.currentTab as CurrentTabSupport;
     }
@@ -101,17 +105,22 @@ export class ScreenShareSessionManager {
         ? (this.config.currentTab as CurrentTabSupport)
         : support;
 
+    const preferredSurface = this.config.displaySurface ?? "browser";
+
     const videoConstraints: MediaTrackConstraints & Record<string, unknown> = {
       frameRate: 30,
-      displaySurface: "browser",
+      ...(preferredSurface !== "any" && { displaySurface: preferredSurface }),
     };
 
     const extraOptions: Record<string, unknown> = {};
 
-    if (mode === "preferCurrentTab") {
-      extraOptions["preferCurrentTab"] = true;
-    } else if (mode === "selfBrowserSurface") {
-      extraOptions["selfBrowserSurface"] = "include";
+    // currentTab optimizations only make sense for browser-tab capture
+    if (preferredSurface === "browser") {
+      if (mode === "preferCurrentTab") {
+        extraOptions["preferCurrentTab"] = true;
+      } else if (mode === "selfBrowserSurface") {
+        extraOptions["selfBrowserSurface"] = "include";
+      }
     }
 
     try {

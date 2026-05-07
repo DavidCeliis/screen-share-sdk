@@ -15,7 +15,22 @@ export interface ScreenShareConfig {
   testModeDelay?: number;
 
   /**
+   * Jaký typ povrchu uživatel může sdílet.
+   *
+   * - `"browser"` (výchozí) — pouze záložky prohlížeče; Chrome automaticky
+   *   přeskočí picker a zachytí aktuální tab (viz currentTab)
+   * - `"window"`  — okna aplikací; standardní picker, currentTab logika se ignoruje
+   * - `"monitor"` — celá obrazovka PC; standardní picker, currentTab logika se ignoruje
+   * - `"any"`     — bez omezení, uživatel vybírá z celé nabídky (tab / okno / monitor)
+   *
+   * Hodnota se předá jako hint do getDisplayMedia — browser ji nemusí vždy respektovat,
+   * ale typicky příslušný povrch předvybere nebo jiné skryje.
+   */
+  displaySurface?: "browser" | "window" | "monitor" | "any";
+
+  /**
    * Přepíše automatickou detekci podpory aktuálního tabu.
+   * Používá se pouze když je displaySurface === "browser" (nebo není nastaveno).
    *
    * Výchozí chování = auto-detekce:
    *   Chrome/Edge  → 'preferCurrentTab'   (přeskočí picker, rovnou zachytí tab)

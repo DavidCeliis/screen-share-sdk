@@ -170,10 +170,59 @@ setThemeMode('light'); // změní téma otevřeného modalu okamžitě
 | `testMode` | `boolean` | `true` | Simuluje spojení, nevyžaduje BE ani SignalR |
 | `testModeDelay` | `number` | `1500` | Zpoždění simulace připojení v ms |
 | `hubUrl` | `string` | — | URL SignalR hubu (nutné pokud `testMode: false`) |
+| `iceServers` | `RTCIceServer[]` | Google STUN | STUN/TURN servery pro WebRTC (viz níže) |
+| `displaySurface` | viz níže | `"browser"` | Co smí uživatel sdílet — tab / okno / monitor / cokoliv |
 | `currentTab` | viz níže | auto | Přepíše automatickou detekci tab-capture módu |
 | `onSessionStart` | `(id: string) => void` | — | Zavolá se při úspěšném připojení |
 | `onSessionEnd` | `(reason) => void` | — | Zavolá se při ukončení sdílení |
 | `onError` | `(err) => void` | — | Chybový callback |
+
+### ICE servery — STUN / TURN (`iceServers`)
+
+Ve výchozím stavu SDK používá Google's veřejný STUN server. Pro produkci nebo privátní sítě stačí předat vlastní servery — bez nutnosti rebuild SDK.
+
+```js
+config: {
+  hubUrl: 'https://your-api.com/hubs/screenshare',
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    {
+      urls: 'turn:turn.your-server.com:3478',
+      username: 'user',
+      credential: 'password',
+    },
+  ],
+}
+```
+
+> `iceServers` se nastavuje identicky pro sdílecí stranu (`ScreenShareConfig`) i pro stranu zobrazující (`ViewerConfig`). Oba session managery se shodují na výchozím Google STUN pokud nic nenastavíš.
+
+### Výběr sdíleného povrchu (`displaySurface`)
+
+Řídí co browser nabídne uživateli v pickeru. Funguje jako hint — browser ho respektuje dle svých možností (Chrome ho typicky respektuje dobře, Firefox/Safari méně).
+
+| Hodnota | Co uživatel vidí v pickeru | Chrome `preferCurrentTab` logika |
+|---|---|---|
+| `"browser"` | Pouze záložky prohlížeče. **Výchozí.** | Aktivní — Chrome přeskočí picker |
+| `"window"` | Okna aplikací | Ignorována |
+| `"monitor"` | Celá obrazovka PC | Ignorována |
+| `"any"` | Vše — záložky, okna, monitory | Ignorována |
+
+```js
+// Chci aby user mohl vybrat cokoliv
+config: { displaySurface: 'any', ... }
+
+// Chci jen celé obrazovky
+config: { displaySurface: 'monitor', ... }
+
+// Chci jen okna aplikací
+config: { displaySurface: 'window', ... }
+
+// Výchozí — pouze záložky, Chrome přeskočí picker
+config: { displaySurface: 'browser', ... } // nebo vynechat
+```
+
+> Jakmile nastavíš cokoliv jiného než `"browser"`, `currentTab` optimalizace (viz níže) se automaticky ignoruje — uživatel vždy uvidí standardní picker bez ohledu na browser.
 
 ### Podpora aktuálního tabu (`currentTab`)
 
