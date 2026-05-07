@@ -1,5 +1,10 @@
 // Public API of screen-share-sdk
 
+// ─── Theme ─────────────────────────────────────────────────────────
+export { setThemeMode } from "./styles/theme";
+export type { ThemeMode, ResolvedTheme } from "./styles/theme";
+export { useThemeMode } from "./components/use-theme-mode";
+
 // ─── React ─────────────────────────────────────────────────────────
 export { ScreenShareButton } from "./components/ScreenShareButton";
 export type { ScreenShareButtonProps } from "./components/ScreenShareButton";

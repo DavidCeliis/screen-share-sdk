@@ -2,6 +2,7 @@
 
 import { injectStyles } from '../styles/inject';
 import { ScreenShareModal } from './modal-vanilla';
+import type { ThemeMode } from '../styles/theme';
 import type { ScreenShareConfig } from '../core/types';
 
 export interface VanillaButtonOptions {
@@ -11,6 +12,14 @@ export interface VanillaButtonOptions {
   config?: ScreenShareConfig;
   connection?: unknown;
   style?: Partial<CSSStyleDeclaration>;
+  /**
+   * Controls color theme of the modal UI.
+   * - `"auto"` (default) — follows OS/browser `prefers-color-scheme`
+   * - `"dark"` — always dark
+   * - `"light"` — always light
+   * - `"custom"` — controlled via `setThemeMode()`
+   */
+  themeMode?: ThemeMode;
 }
 
 const SCREEN_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
@@ -36,6 +45,7 @@ export function createScreenShareButton(opts: VanillaButtonOptions): HTMLButtonE
   const modal = new ScreenShareModal({
     config: opts.config,
     connection: opts.connection,
+    themeMode: opts.themeMode,
     onSessionStart: () => {
       btn.classList.add('active');
       btn.innerHTML = `${SCREEN_ICON} Sharing…`;

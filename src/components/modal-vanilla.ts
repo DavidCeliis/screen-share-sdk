@@ -1,12 +1,22 @@
 // src/components/modal-vanilla.ts
 
 import { injectStyles, showToast } from '../styles/inject';
+import { applyTheme } from '../styles/theme';
+import type { ThemeMode } from '../styles/theme';
 import { ScreenShareSessionManager } from '../core/session-manager';
 import type { ScreenShareConfig, ScreenShareStatus } from '../core/types';
 
 export interface VanillaModalOptions {
   config?: ScreenShareConfig;
   connection?: unknown;
+  /**
+   * Controls color theme of the modal UI.
+   * - `"auto"` (default) — follows OS/browser `prefers-color-scheme`
+   * - `"dark"` — always dark
+   * - `"light"` — always light
+   * - `"custom"` — controlled via `setThemeMode()`
+   */
+  themeMode?: ThemeMode;
   onClose?: () => void;
   onSessionStart?: (sessionId: string) => void;
   onSessionEnd?: (reason: string) => void;
@@ -292,7 +302,7 @@ export class ScreenShareModal {
         <div class="sssdk-preview-placeholder">
           ${ERROR_ICON}
           <span style="color:#ef4444;font-size:13px">Přístup ke sdílení byl zamítnut</span>
-          <span style="color:#666;font-size:12px;text-align:center;max-width:260px">
+          <span class="sssdk-permission-hint">
             Kliknutím níže zkuste znovu nebo povolte sdílení v nastavení stránky.
           </span>
         </div>`;
@@ -369,6 +379,7 @@ export class ScreenShareModal {
     const overlay = document.createElement('div');
     overlay.className = 'sssdk-overlay';
     overlay.addEventListener('click', (e) => { if (e.target === overlay) this.close(); });
+    applyTheme(overlay, this.opts.themeMode ?? 'auto');
     return overlay;
   }
 

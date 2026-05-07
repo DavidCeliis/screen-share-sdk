@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { injectStyles } from "../styles/inject";
+import { resolveThemeAttr, subscribeToTheme } from "../styles/theme";
+import type { ThemeMode } from "../styles/theme";
 import { ScreenShareSessionManager } from "../core/session-manager";
 import type { ScreenShareConfig, ScreenShareStatus } from "../core/types";
 
@@ -9,6 +11,14 @@ export interface ScreenShareButtonProps {
   style?: React.CSSProperties;
   config?: ScreenShareConfig;
   connection?: unknown;
+  /**
+   * Controls color theme of the modal UI.
+   * - `"auto"` (default) — follows the OS/browser preference via CSS `prefers-color-scheme`
+   * - `"dark"` — always dark
+   * - `"light"` — always light
+   * - `"custom"` — controlled programmatically via `setThemeMode()` or `useThemeMode()`
+   */
+  themeMode?: ThemeMode;
   children?: (props: {
     onClick: () => void;
     isSharing: boolean;
@@ -68,6 +78,7 @@ export function ScreenShareButton({
   style,
   config,
   connection,
+  themeMode = "auto",
   children,
 }: ScreenShareButtonProps) {
   const [open, setOpen] = useState(false);
@@ -76,6 +87,10 @@ export function ScreenShareButton({
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [errorMsg, setErrorMsg] = useState("");
   const [permissionDenied, setPermissionDenied] = useState(false);
+  // Tracks the resolved theme when themeMode === "custom"
+  const [customTheme, setCustomTheme] = useState(() =>
+    resolveThemeAttr(themeMode),
+  );
 
   const digitRefs = useRef<Array<HTMLInputElement | null>>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -87,6 +102,12 @@ export function ScreenShareButton({
   useEffect(() => {
     injectStyles();
   }, []);
+
+  // Subscribe to setThemeMode() calls when in custom mode
+  useEffect(() => {
+    if (themeMode !== "custom") return;
+    return subscribeToTheme((t) => setCustomTheme(t));
+  }, [themeMode]);
 
   const getManager = useCallback(() => {
     if (!managerRef.current) {
@@ -321,6 +342,8 @@ export function ScreenShareButton({
         <div
           className="sssdk-overlay"
           ref={overlayRef}
+          data-theme={themeMode === "custom" ? customTheme : resolveThemeAttr(themeMode)}
+          data-sssdk-custom={themeMode === "custom" ? "" : undefined}
           onClick={(e) => {
             if (e.target === overlayRef.current) handleClose();
           }}
@@ -434,14 +457,7 @@ export function ScreenShareButton({
                       <span style={{ color: "#ef4444", fontSize: 13 }}>
                         Přístup ke sdílení byl zamítnut
                       </span>
-                      <span
-                        style={{
-                          color: "#666",
-                          fontSize: 12,
-                          textAlign: "center",
-                          maxWidth: 260,
-                        }}
-                      >
+                      <span className="sssdk-permission-hint">
                         Kliknutím níže zkuste znovu. Pokud browser přístup
                         trvale blokuje, povolte sdílení v nastavení stránky.
                       </span>

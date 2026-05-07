@@ -1,10 +1,76 @@
+import { getLastThemeAttr } from './theme';
+
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+/* ─── Theme variables — dark default ────────────────────────────────── */
+
+.sssdk-overlay,
+.sssdk-toast-container {
+  --sssdk-overlay-bg:   rgba(8, 8, 12, 0.75);
+  --sssdk-modal-bg:     #0f0f14;
+  --sssdk-modal-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  --sssdk-toast-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  --sssdk-border:       rgba(255,255,255,0.08);
+  --sssdk-border-soft:  rgba(255,255,255,0.06);
+  --sssdk-surface:      rgba(255,255,255,0.04);
+  --sssdk-surface-hover:rgba(255,255,255,0.10);
+  --sssdk-text:         #e8e8f0;
+  --sssdk-text-secondary:#888;
+  --sssdk-text-muted:   #555;
+  --sssdk-text-placeholder:#444;
+  --sssdk-preview-bg:   #1a1a24;
+  --sssdk-badge-bg:     rgba(0,0,0,0.70);
+}
+
+/* ─── Light theme ────────────────────────────────────────────────────── */
+
+.sssdk-overlay[data-theme="light"],
+.sssdk-toast-container[data-theme="light"] {
+  --sssdk-overlay-bg:   rgba(150, 150, 170, 0.50);
+  --sssdk-modal-bg:     #ffffff;
+  --sssdk-modal-shadow: 0 32px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+  --sssdk-toast-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+  --sssdk-border:       rgba(0,0,0,0.10);
+  --sssdk-border-soft:  rgba(0,0,0,0.06);
+  --sssdk-surface:      rgba(0,0,0,0.04);
+  --sssdk-surface-hover:rgba(0,0,0,0.08);
+  --sssdk-text:         #1a1a24;
+  --sssdk-text-secondary:#777;
+  --sssdk-text-muted:   #999;
+  --sssdk-text-placeholder:#bbb;
+  --sssdk-preview-bg:   #f0f0f5;
+  --sssdk-badge-bg:     rgba(255,255,255,0.85);
+}
+
+/* ─── Auto mode — follow system when no data-theme set ──────────────── */
+
+@media (prefers-color-scheme: light) {
+  .sssdk-overlay:not([data-theme]),
+  .sssdk-toast-container:not([data-theme]) {
+    --sssdk-overlay-bg:   rgba(150, 150, 170, 0.50);
+    --sssdk-modal-bg:     #ffffff;
+    --sssdk-modal-shadow: 0 32px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+    --sssdk-toast-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+    --sssdk-border:       rgba(0,0,0,0.10);
+    --sssdk-border-soft:  rgba(0,0,0,0.06);
+    --sssdk-surface:      rgba(0,0,0,0.04);
+    --sssdk-surface-hover:rgba(0,0,0,0.08);
+    --sssdk-text:         #1a1a24;
+    --sssdk-text-secondary:#777;
+    --sssdk-text-muted:   #999;
+    --sssdk-text-placeholder:#bbb;
+    --sssdk-preview-bg:   #f0f0f5;
+    --sssdk-badge-bg:     rgba(255,255,255,0.85);
+  }
+}
+
+/* ─── Layout ─────────────────────────────────────────────────────────── */
 
 .sssdk-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 8, 12, 0.75);
+  background: var(--sssdk-overlay-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   display: flex;
@@ -16,14 +82,14 @@ const STYLES = `
 }
 
 .sssdk-modal {
-  background: #0f0f14;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--sssdk-modal-bg);
+  border: 1px solid var(--sssdk-border);
   border-radius: 20px;
   padding: 28px;
   width: min(520px, calc(100vw - 32px));
-  box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  box-shadow: var(--sssdk-modal-shadow);
   animation: sssdk-slide-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  color: #e8e8f0;
+  color: var(--sssdk-text);
 }
 
 .sssdk-header {
@@ -37,7 +103,7 @@ const STYLES = `
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #e8e8f0;
+  color: var(--sssdk-text);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -60,9 +126,9 @@ const STYLES = `
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
-  color: #888;
+  border: 1px solid var(--sssdk-border);
+  background: var(--sssdk-surface);
+  color: var(--sssdk-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -73,16 +139,16 @@ const STYLES = `
 }
 
 .sssdk-close:hover {
-  background: rgba(255,255,255,0.1);
-  color: #e8e8f0;
+  background: var(--sssdk-surface-hover);
+  color: var(--sssdk-text);
 }
 
 .sssdk-preview {
   width: 100%;
   aspect-ratio: 16/9;
   border-radius: 12px;
-  background: #1a1a24;
-  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--sssdk-preview-bg);
+  border: 1px solid var(--sssdk-border-soft);
   overflow: hidden;
   position: relative;
   margin-bottom: 20px;
@@ -102,7 +168,7 @@ const STYLES = `
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #444;
+  color: var(--sssdk-text-placeholder);
 }
 
 .sssdk-preview-placeholder svg {
@@ -113,15 +179,22 @@ const STYLES = `
 
 .sssdk-preview-placeholder span {
   font-size: 13px;
-  color: #555;
+  color: var(--sssdk-text-muted);
+}
+
+.sssdk-permission-hint {
+  font-size: 12px;
+  color: var(--sssdk-text-muted);
+  text-align: center;
+  max-width: 260px;
 }
 
 .sssdk-preview-badge {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(0,0,0,0.7);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--sssdk-badge-bg);
+  border: 1px solid var(--sssdk-border);
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 11px;
@@ -147,7 +220,7 @@ const STYLES = `
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #555;
+  color: var(--sssdk-text-muted);
   margin-bottom: 10px;
 }
 
@@ -162,9 +235,9 @@ const STYLES = `
   width: 52px;
   height: 58px;
   border-radius: 12px;
-  border: 1.5px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
-  color: #e8e8f0;
+  border: 1.5px solid var(--sssdk-border);
+  background: var(--sssdk-surface);
+  color: var(--sssdk-text);
   font-size: 24px;
   font-family: 'DM Mono', monospace;
   font-weight: 500;
@@ -214,14 +287,14 @@ const STYLES = `
 }
 
 .sssdk-btn-secondary {
-  background: rgba(255,255,255,0.06);
-  color: #888;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--sssdk-surface);
+  color: var(--sssdk-text-secondary);
+  border: 1px solid var(--sssdk-border);
 }
 
 .sssdk-btn-secondary:hover {
-  background: rgba(255,255,255,0.1);
-  color: #ccc;
+  background: var(--sssdk-surface-hover);
+  color: var(--sssdk-text);
 }
 
 .sssdk-btn-primary {
@@ -292,7 +365,7 @@ const STYLES = `
 
 .sssdk-sharing-text {
   font-size: 13px;
-  color: #aaa;
+  color: var(--sssdk-text-secondary);
 }
 
 .sssdk-btn-stop {
@@ -380,17 +453,17 @@ const STYLES = `
 }
 
 .sssdk-toast {
-  background: #0f0f14;
-  border: 1px solid rgba(255,255,255,0.10);
+  background: var(--sssdk-modal-bg);
+  border: 1px solid var(--sssdk-border);
   border-radius: 12px;
   padding: 12px 18px;
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #e8e8f0;
+  color: var(--sssdk-text);
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  box-shadow: var(--sssdk-toast-shadow);
   animation: sssdk-toast-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   white-space: nowrap;
   pointer-events: auto;
@@ -449,7 +522,7 @@ const STYLES = `
   border-radius: 12px;
   border: 1.5px solid rgba(59,130,246,0.5);
   background: rgba(59,130,246,0.08);
-  color: #e8e8f0;
+  color: var(--sssdk-text);
   font-size: 26px;
   font-family: 'DM Mono', monospace;
   font-weight: 500;
@@ -463,10 +536,10 @@ const STYLES = `
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--sssdk-surface);
+  border: 1px solid var(--sssdk-border);
   border-radius: 8px;
-  color: #888;
+  color: var(--sssdk-text-secondary);
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 13px;
   padding: 6px 14px;
@@ -476,15 +549,15 @@ const STYLES = `
 }
 
 .sssdk-viewer-copy-btn:hover {
-  background: rgba(255,255,255,0.1);
-  color: #ccc;
+  background: var(--sssdk-surface-hover);
+  color: var(--sssdk-text);
 }
 
 .sssdk-viewer-waiting-status {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #555;
+  color: var(--sssdk-text-muted);
   font-size: 13px;
 }
 
@@ -513,35 +586,43 @@ const STYLES = `
 let injected = false;
 
 export function injectStyles(): void {
-  if (injected || typeof document === "undefined") return;
+  if (injected || typeof document === 'undefined') return;
   injected = true;
-  const style = document.createElement("style");
-  style.setAttribute("data-sssdk", "1");
+  const style = document.createElement('style');
+  style.setAttribute('data-sssdk', '1');
   style.textContent = STYLES;
   document.head.appendChild(style);
 }
 
 export function showToast(
   message: string,
-  type: "warning" | "error" = "warning",
+  type: 'warning' | 'error' = 'warning',
   duration = 5000,
 ): void {
-  if (typeof document === "undefined") return;
+  if (typeof document === 'undefined') return;
 
-  let container = document.querySelector<HTMLElement>(".sssdk-toast-container");
+  let container = document.querySelector<HTMLElement>('.sssdk-toast-container');
   if (!container) {
-    container = document.createElement("div");
-    container.className = "sssdk-toast-container";
+    container = document.createElement('div');
+    container.className = 'sssdk-toast-container';
     document.body.appendChild(container);
   }
 
-  const toast = document.createElement("div");
+  // Inherit current theme so toast matches the active modal
+  const themeAttr = getLastThemeAttr();
+  if (themeAttr) {
+    container.setAttribute('data-theme', themeAttr);
+  } else {
+    container.removeAttribute('data-theme');
+  }
+
+  const toast = document.createElement('div');
   toast.className = `sssdk-toast sssdk-toast-${type}`;
   toast.innerHTML = `<div class="sssdk-toast-dot"></div><span>${message}</span>`;
   container.appendChild(toast);
 
   setTimeout(() => {
-    toast.style.animation = "sssdk-toast-out 0.3s ease forwards";
+    toast.style.animation = 'sssdk-toast-out 0.3s ease forwards';
     setTimeout(() => toast.remove(), 300);
   }, duration);
 }

@@ -70,6 +70,99 @@ createScreenShareButton({
 
 ---
 
+## Témata (dark / light mode)
+
+SDK podporuje čtyři režimy přes prop `themeMode` (React) nebo option `themeMode` (Vanilla JS).
+
+| Hodnota | Chování |
+|---|---|
+| `"auto"` | Sleduje systémové nastavení OS / browseru přes `prefers-color-scheme`. **Výchozí.** |
+| `"dark"` | Vždy tmavé, bez ohledu na systém |
+| `"light"` | Vždy světlé, bez ohledu na systém |
+| `"custom"` | Ovládáš sám přes `setThemeMode()` nebo hook `useThemeMode()` |
+
+### Auto (výchozí)
+
+```tsx
+// React
+<ScreenShareButton /> // = themeMode="auto"
+
+// Vanilla JS
+createScreenShareButton({ container: '#btn' }) // = themeMode: 'auto'
+```
+
+### Dark / Light natvrdo
+
+```tsx
+// React
+<ScreenShareButton themeMode="dark" />
+<ScreenShareButton themeMode="light" />
+
+// Vanilla JS
+createScreenShareButton({ container: '#btn', themeMode: 'dark' });
+createScreenShareButton({ container: '#btn', themeMode: 'light' });
+```
+
+### Custom — React
+
+Použij hook `useThemeMode` — vrací aktuální téma a setter, který propaguje změnu do všech aktivních overlayů naráz.
+
+```tsx
+import { useThemeMode, ScreenShareButton } from 'screen-share-sdk';
+
+function App() {
+  const [theme, setTheme] = useThemeMode('dark'); // výchozí hodnota
+
+  return (
+    <>
+      <ScreenShareButton themeMode="custom" />
+
+      <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+        Přepnout téma
+      </button>
+    </>
+  );
+}
+```
+
+Pokud máš téma uložené ve vlastním stavu (Redux, Zustand, Context…), stačí volat `setThemeMode` přímo:
+
+```tsx
+import { setThemeMode, ScreenShareButton } from 'screen-share-sdk';
+
+// Kdekoli v aplikaci — React state nebo event handler
+setThemeMode('light');
+
+// Komponenta jen oznamuje, že chce custom řízení
+<ScreenShareButton themeMode="custom" />
+```
+
+### Custom — Vanilla JS
+
+```js
+import { setThemeMode, createScreenShareButton } from 'screen-share-sdk';
+
+createScreenShareButton({ container: '#btn', themeMode: 'custom' });
+
+// Přepnutí kdykoli — ovlivní všechny otevřené overlaye ihned
+document.getElementById('toggle').addEventListener('click', () => {
+  setThemeMode('light');
+});
+```
+
+`setThemeMode` funguje globálně — i při přímém použití `ScreenShareModal` nebo `ScreenViewModal`:
+
+```js
+import { setThemeMode, ScreenShareModal } from 'screen-share-sdk';
+
+const modal = new ScreenShareModal({ themeMode: 'custom' });
+modal.open();
+
+setThemeMode('light'); // změní téma otevřeného modalu okamžitě
+```
+
+---
+
 ## Konfigurace (`ScreenShareConfig`)
 
 | Vlastnost | Typ | Výchozí | Popis |

@@ -1,10 +1,20 @@
 import { injectStyles, showToast } from "../styles/inject";
+import { applyTheme } from "../styles/theme";
+import type { ThemeMode } from "../styles/theme";
 import { ScreenViewSessionManager } from "../core/viewer-session-manager";
 import type { ViewerConfig, ViewerStatus } from "../core/types";
 
 export interface ViewerModalOptions {
   config?: ViewerConfig;
   connection?: unknown;
+  /**
+   * Controls color theme of the modal UI.
+   * - `"auto"` (default) — follows OS/browser `prefers-color-scheme`
+   * - `"dark"` — always dark
+   * - `"light"` — always light
+   * - `"custom"` — controlled via `setThemeMode()`
+   */
+  themeMode?: ThemeMode;
   onClose?: () => void;
   onSessionStart?: (code: string) => void;
   onSessionEnd?: (reason: string) => void;
@@ -314,6 +324,7 @@ export class ScreenViewModal {
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) this.close();
     });
+    applyTheme(overlay, this.opts.themeMode ?? "auto");
     return overlay;
   }
 }
