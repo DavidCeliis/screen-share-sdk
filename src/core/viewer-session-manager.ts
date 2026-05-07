@@ -19,14 +19,25 @@ export class ScreenViewSessionManager {
       return Math.floor(100000 + Math.random() * 900000).toString();
     }
     if (!this.config.apiUrl) {
-      throw this.makeError("CONNECTION_FAILED", "apiUrl is required when testMode is false");
+      throw this.makeError(
+        "CONNECTION_FAILED",
+        "apiUrl is required when testMode is false",
+      );
     }
-    const res = await fetch(`${this.config.apiUrl}/api/manage/Register`, { method: "POST" });
+    const res = await fetch(`${this.config.apiUrl}/api/manage/Register`, {
+      method: "POST",
+    });
     if (!res.ok) {
-      throw this.makeError("CONNECTION_FAILED", `Registration failed: ${res.status}`);
+      throw this.makeError(
+        "CONNECTION_FAILED",
+        `Registration failed: ${res.status}`,
+      );
     }
     const data = await res.json();
-    const code = typeof data === "string" ? data : (data.code ?? data.sessionCode ?? String(data));
+    const code =
+      typeof data === "string"
+        ? data
+        : (data.code ?? data.sessionCode ?? String(data));
     return code;
   }
 
@@ -54,7 +65,9 @@ export class ScreenViewSessionManager {
 
     return new Promise<MediaStream>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(this.makeError("CONNECTION_FAILED", "Timeout: klient se nepřipojil"));
+        reject(
+          this.makeError("CONNECTION_FAILED", "Timeout: klient se nepřipojil"),
+        );
       }, 120_000);
 
       this.adapter!.onOffer(async (sdp) => {
@@ -70,13 +83,12 @@ export class ScreenViewSessionManager {
     });
   }
 
-  private async setupWebRTC(code: string, offerSdp: string): Promise<MediaStream> {
+  private async setupWebRTC(
+    code: string,
+    offerSdp: string,
+  ): Promise<MediaStream> {
     this.peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }, {
-        urls: "turn:relay1.expressturn.com:3478",
-        username: "efUN4K1KZUV4XSNO0J",
-        credential: "KBrFDkFAjhkOHHr6",
-      }],
+      iceServers: this.config.iceServers ?? [{ urls: "stun:stun.l.google.com:19302" }],
     });
 
     this.peerConnection.onconnectionstatechange = () => {
@@ -102,7 +114,9 @@ export class ScreenViewSessionManager {
     this.adapter!.onCandidate(async (candidateInit) => {
       if (remoteDescSet) {
         try {
-          await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidateInit));
+          await this.peerConnection?.addIceCandidate(
+            new RTCIceCandidate(candidateInit),
+          );
         } catch (err) {
           console.warn("[WebRTC] addIceCandidate failed:", err);
         }
@@ -119,7 +133,10 @@ export class ScreenViewSessionManager {
       };
     });
 
-    await this.peerConnection.setRemoteDescription({ type: "offer", sdp: offerSdp });
+    await this.peerConnection.setRemoteDescription({
+      type: "offer",
+      sdp: offerSdp,
+    });
     remoteDescSet = true;
 
     for (const c of pendingCandidates) {
@@ -137,7 +154,9 @@ export class ScreenViewSessionManager {
     return streamPromise;
   }
 
-  endSession(reason: "user_stopped" | "remote_disconnect" | "error" = "user_stopped"): void {
+  endSession(
+    reason: "user_stopped" | "remote_disconnect" | "error" = "user_stopped",
+  ): void {
     if (!this.currentCode) return;
     const code = this.currentCode;
     this.currentCode = null;
@@ -147,14 +166,19 @@ export class ScreenViewSessionManager {
     if (code) {
       this.adapter?.disconnect(code).catch(() => {});
       if (this.config.apiUrl && !this.config.testMode) {
-        fetch(`${this.config.apiUrl}/api/manage/end/${code}`, { method: "POST" }).catch(() => {});
+        fetch(`${this.config.apiUrl}/api/manage/end/${code}`, {
+          method: "POST",
+        }).catch(() => {});
       }
     }
     this.adapter = null;
     this.config.onSessionEnd?.(reason);
   }
 
-  private makeError(code: ScreenShareError["code"], message: string): Error & ScreenShareError {
+  private makeError(
+    code: ScreenShareError["code"],
+    message: string,
+  ): Error & ScreenShareError {
     const err = new Error(message) as Error & ScreenShareError;
     err.code = code;
     return err;

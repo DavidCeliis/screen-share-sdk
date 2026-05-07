@@ -8,6 +8,8 @@ export { useThemeMode } from "./components/use-theme-mode";
 // ─── React ─────────────────────────────────────────────────────────
 export { ScreenShareButton } from "./components/ScreenShareButton";
 export type { ScreenShareButtonProps } from "./components/ScreenShareButton";
+export { ScreenViewButton } from "./components/ScreenViewButton";
+export type { ScreenViewButtonProps } from "./components/ScreenViewButton";
 export { useScreenShare } from "./components/use-screen-share";
 export { useScreenView } from "./components/use-screen-view";
 

@@ -270,7 +270,10 @@ export class ScreenViewModal {
         <button class="sssdk-close" id="sssdk-close-btn">✕</button>
       </div>
       <div class="sssdk-preview" id="sssdk-preview">
-        <div class="sssdk-preview-badge">LIVE</div>
+        <div class="sssdk-preview-placeholder" id="sssdk-p2p-loading" style="position:absolute;inset:0;background:transparent">
+          <div class="sssdk-spinner" style="width:28px;height:28px;border-width:3px"></div>
+          <span style="font-size:13px">Navazuji P2P spojení…</span>
+        </div>
       </div>
       <div class="sssdk-sharing-status">
         <div class="sssdk-sharing-info">
@@ -293,6 +296,14 @@ export class ScreenViewModal {
       video.playsInline = true;
       video.style.cssText = "width:100%;height:100%;object-fit:contain";
       video.srcObject = this.stream;
+      video.addEventListener("playing", () => {
+        document.getElementById("sssdk-p2p-loading")?.remove();
+        preview.querySelector<HTMLElement>(".sssdk-preview-badge")?.remove();
+        const badge = document.createElement("div");
+        badge.className = "sssdk-preview-badge";
+        badge.textContent = "LIVE";
+        preview.appendChild(badge);
+      }, { once: true });
       preview.insertBefore(video, preview.firstChild);
     }
 

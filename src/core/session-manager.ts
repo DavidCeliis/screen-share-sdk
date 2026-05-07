@@ -157,9 +157,13 @@ export class ScreenShareSessionManager {
     }
 
     const videoTrack = stream.getVideoTracks()[0];
-    videoTrack?.addEventListener("ended", () => {
-      this.endSession("user_stopped");
-    }, { once: true });
+    videoTrack?.addEventListener(
+      "ended",
+      () => {
+        this.endSession("user_stopped");
+      },
+      { once: true },
+    );
 
     const session: ScreenShareSession = {
       sessionId: code,
@@ -179,7 +183,7 @@ export class ScreenShareSessionManager {
     this.adapter.onDisconnect(() => {
       if (disconnectFired) return;
       disconnectFired = true;
-      this.endSession('remote_disconnect');
+      this.endSession("remote_disconnect");
     });
 
     return session;
@@ -190,7 +194,7 @@ export class ScreenShareSessionManager {
     sessionId: string,
   ): Promise<void> {
     this.peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: this.config.iceServers ?? [{ urls: "stun:stun.l.google.com:19302" }],
     });
 
     this.peerConnection.onconnectionstatechange = () => {
@@ -215,8 +219,13 @@ export class ScreenShareSessionManager {
     };
 
     this.adapter!.onCandidate(async (candidateInit) => {
-      if (this.peerConnection?.remoteDescription && this.peerConnection.remoteDescription.type) {
-        await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidateInit));
+      if (
+        this.peerConnection?.remoteDescription &&
+        this.peerConnection.remoteDescription.type
+      ) {
+        await this.peerConnection.addIceCandidate(
+          new RTCIceCandidate(candidateInit),
+        );
       } else {
         this.pendingCandidates.push(candidateInit);
       }
@@ -226,9 +235,11 @@ export class ScreenShareSessionManager {
       await this.peerConnection?.setRemoteDescription(
         new RTCSessionDescription(answer),
       );
-      
+
       for (const candidateInit of this.pendingCandidates) {
-        await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidateInit));
+        await this.peerConnection?.addIceCandidate(
+          new RTCIceCandidate(candidateInit),
+        );
       }
       this.pendingCandidates = [];
     });

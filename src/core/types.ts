@@ -2,6 +2,12 @@ export interface ScreenShareConfig {
   /** SignalR hub URL. Required unless using testMode. */
   hubUrl?: string;
 
+  /**
+   * ICE servery pro WebRTC. Výchozí: Google STUN (stun:stun.l.google.com:19302).
+   * Přepište pro vlastní TURN/STUN servery bez potřeby rebuild SDK.
+   */
+  iceServers?: RTCIceServer[];
+
   /** If true, simulates a successful connection without real SignalR/WebRTC */
   testMode?: boolean;
 
@@ -63,6 +69,12 @@ export interface ViewerConfig {
   hubUrl?: string;
   /** Base URL for REST API (e.g. https://example.com). Required unless using testMode. */
   apiUrl?: string;
+
+  /**
+   * ICE servery pro WebRTC. Výchozí: Google STUN (stun:stun.l.google.com:19302).
+   * Přepište pro vlastní TURN/STUN servery bez potřeby rebuild SDK.
+   */
+  iceServers?: RTCIceServer[];
   testMode?: boolean;
   testModeDelay?: number;
   onSessionStart?: (code: string) => void;
