@@ -3,7 +3,21 @@ import type {
   ScreenShareConfig,
   ScreenShareSession,
   ScreenShareError,
+  VideoQuality,
+  VideoQualityCustom,
 } from "./types";
+
+const QUALITY_PRESETS: Record<string, VideoQualityCustom> = {
+  low:    { width: 854,  height: 480,  frameRate: 10 },
+  medium: { width: 1280, height: 720,  frameRate: 15 },
+  high:   { width: 1920, height: 1080, frameRate: 30 },
+};
+
+function resolveQuality(q: VideoQuality | undefined): VideoQualityCustom | null {
+  if (!q || q === "source") return null;
+  if (typeof q === "string") return QUALITY_PRESETS[q];
+  return q;
+}
 
 // ─── Browser capability detection ───────────────────────────────────
 
@@ -14,17 +28,17 @@ export type CurrentTabSupport =
   | "unsupported";
 
 /**
- * Detekuje jakou úroveň podpory pro zachycení aktuálního tabu browser nabízí.
+ * Detects the level of current-tab capture support available in the browser.
  *
- * 'preferCurrentTab'   — Chrome 94+/Edge 94+: přeskočí picker, rovnou zachytí tab
- * 'selfBrowserSurface' — Chrome 107+ / Firefox 116+: tab se zobrazí v pickeru
- * 'manual'             — getDisplayMedia funguje, ale aktuální tab není v nabídce
- *                        (Safari, starší Firefox) — uživatel musí vybrat jiný povrch
- * 'unsupported'        — getDisplayMedia vůbec není dostupné (mobil, starý browser)
+ * 'preferCurrentTab'   — Chrome 94+/Edge 94+: skips picker, captures tab immediately
+ * 'selfBrowserSurface' — Chrome 107+ / Firefox 116+: tab appears in picker
+ * 'manual'             — getDisplayMedia works but current tab is not listed
+ *                        (Safari, older Firefox) — user must pick another surface
+ * 'unsupported'        — getDisplayMedia is not available (mobile, old browser)
  *
- * Poznámka k Chrome: Chrome 94-106 podporuje preferCurrentTab ale NE selfBrowserSurface.
- * Chrome 107+ podporuje oboje — preferujeme preferCurrentTab protože je UX lepší.
- * Chrome nikdy nekončí jako 'manual' — vždy má alespoň selfBrowserSurface.
+ * Chrome note: Chrome 94-106 supports preferCurrentTab but NOT selfBrowserSurface.
+ * Chrome 107+ supports both — we prefer preferCurrentTab for better UX.
+ * Chrome never returns 'manual' — it always has at least selfBrowserSurface.
  */
 export function detectCurrentTabSupport(): CurrentTabSupport {
   if (
@@ -37,13 +51,13 @@ export function detectCurrentTabSupport(): CurrentTabSupport {
   const ua = navigator.userAgent;
 
   // Chromium-based (Chrome, Edge, Opera, Brave...)
-  // Poznámka: Edge má "Chrome/X" v UA, takže tato detekce pokrývá i Edge.
+  // Note: Edge includes "Chrome/X" in its UA, so this detection covers Edge as well.
   const chromeMatch = ua.match(/Chrome\/(\d+)/);
   if (chromeMatch) {
     const version = parseInt(chromeMatch[1], 10);
-    if (version >= 94) return "preferCurrentTab"; // nejlepší UX, přeskočí picker
-    if (version >= 107) return "selfBrowserSurface"; // teoreticky nedosažitelné (107 > 94) ale pro jistotu
-    return "selfBrowserSurface"; // starší Chromium s getDisplayMedia, zkusíme
+    if (version >= 94) return "preferCurrentTab"; // best UX, skips picker
+    if (version >= 107) return "selfBrowserSurface"; // theoretically unreachable (107 > 94) but kept for safety
+    return "selfBrowserSurface"; // older Chromium with getDisplayMedia, try it
   }
 
   // Firefox
@@ -51,12 +65,12 @@ export function detectCurrentTabSupport(): CurrentTabSupport {
   if (ffMatch) {
     const version = parseInt(ffMatch[1], 10);
     if (version >= 116) return "selfBrowserSurface";
-    return "manual"; // starší Firefox — tab v pickeru nevidí
+    return "manual"; // older Firefox — tab not visible in picker
   }
 
   if (ua.includes("Safari")) return "manual";
 
-  // Ostatní — getDisplayMedia je, ale neznáme podporu tab selectoru
+  // Other — getDisplayMedia exists but tab selector support is unknown
   return "manual";
 }
 
@@ -91,8 +105,8 @@ export class ScreenShareSessionManager {
 
     if (support === "unsupported") {
       alert(
-        "Váš prohlížeč nepodporuje sdílení obrazovky.\n\n" +
-          "Použijte prosím Chrome, Edge nebo Firefox v aktuální verzi na počítači.",
+        "Your browser does not support screen sharing.\n\n" +
+          "Please use Chrome, Edge, or Firefox (current version) on a desktop device.",
       );
       throw this.makeError(
         "UNSUPPORTED",
@@ -107,8 +121,12 @@ export class ScreenShareSessionManager {
 
     const preferredSurface = this.config.displaySurface ?? "browser";
 
+    const quality = resolveQuality(this.config.videoQuality ?? "medium");
+
     const videoConstraints: MediaTrackConstraints & Record<string, unknown> = {
-      frameRate: 30,
+      ...(quality?.frameRate !== undefined && { frameRate: { ideal: quality.frameRate, max: quality.frameRate } }),
+      ...(quality?.width     !== undefined && { width:     { ideal: quality.width,     max: quality.width     } }),
+      ...(quality?.height    !== undefined && { height:    { ideal: quality.height,    max: quality.height    } }),
       ...(preferredSurface !== "any" && { displaySurface: preferredSurface }),
     };
 

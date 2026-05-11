@@ -1,12 +1,36 @@
+export interface VideoQualityCustom {
+  width?: number;
+  height?: number;
+  frameRate?: number;
+}
+
+/**
+ * Built-in quality presets:
+ * - `"low"`    — 854×480 @ 10 fps
+ * - `"medium"` — 1280×720 @ 15 fps (default)
+ * - `"high"`   — 1920×1080 @ 30 fps
+ * - `"source"` — no constraints, browser sends at native resolution
+ *
+ * Or a custom object: `{ width: 1920, height: 1080, frameRate: 24 }`
+ * (all properties are optional)
+ */
+export type VideoQuality = "low" | "medium" | "high" | "source" | VideoQualityCustom;
+
 export interface ScreenShareConfig {
   /** SignalR hub URL. Required unless using testMode. */
   hubUrl?: string;
 
   /**
-   * ICE servery pro WebRTC. Výchozí: Google STUN (stun:stun.l.google.com:19302).
-   * Přepište pro vlastní TURN/STUN servery bez potřeby rebuild SDK.
+   * ICE servers for WebRTC. Default: Google STUN (stun:stun.l.google.com:19302).
+   * Override with your own STUN/TURN servers — no SDK rebuild required.
    */
   iceServers?: RTCIceServer[];
+
+  /**
+   * Quality of the outgoing video. Default: `"medium"` (1280×720 @ 15 fps).
+   * Use a preset string or a custom `{ width, height, frameRate }` object.
+   */
+  videoQuality?: VideoQuality;
 
   /** If true, simulates a successful connection without real SignalR/WebRTC */
   testMode?: boolean;
@@ -15,38 +39,38 @@ export interface ScreenShareConfig {
   testModeDelay?: number;
 
   /**
-   * Jaký typ povrchu uživatel může sdílet.
+   * What type of surface the user can share.
    *
-   * - `"browser"` (výchozí) — pouze záložky prohlížeče; Chrome automaticky
-   *   přeskočí picker a zachytí aktuální tab (viz currentTab)
-   * - `"window"`  — okna aplikací; standardní picker, currentTab logika se ignoruje
-   * - `"monitor"` — celá obrazovka PC; standardní picker, currentTab logika se ignoruje
-   * - `"any"`     — bez omezení, uživatel vybírá z celé nabídky (tab / okno / monitor)
+   * - `"browser"` (default) — browser tabs only; Chrome automatically skips
+   *   the picker and captures the current tab (see currentTab)
+   * - `"window"`  — application windows; standard picker, currentTab logic is ignored
+   * - `"monitor"` — full screen; standard picker, currentTab logic is ignored
+   * - `"any"`     — no restriction, user picks from the full list (tab / window / monitor)
    *
-   * Hodnota se předá jako hint do getDisplayMedia — browser ji nemusí vždy respektovat,
-   * ale typicky příslušný povrch předvybere nebo jiné skryje.
+   * Passed as a hint to getDisplayMedia — the browser may not always honour it,
+   * but typically pre-selects the matching surface type or hides others.
    */
   displaySurface?: "browser" | "window" | "monitor" | "any";
 
   /**
-   * Přepíše automatickou detekci podpory aktuálního tabu.
-   * Používá se pouze když je displaySurface === "browser" (nebo není nastaveno).
+   * Overrides automatic current-tab capture mode detection.
+   * Only applies when displaySurface === "browser" (or not set).
    *
-   * Výchozí chování = auto-detekce:
-   *   Chrome/Edge  → 'preferCurrentTab'   (přeskočí picker, rovnou zachytí tab)
-   *   Firefox 116+ → 'selfBrowserSurface' (tab se zobrazí v pickeru)
-   *   Safari/jiné  → 'manual'             (standardní picker, uživatel vybírá sám)
-   *   bez podpory  → alert + error
+   * Default behaviour = auto-detection:
+   *   Chrome/Edge  → 'preferCurrentTab'   (skips picker, captures tab immediately)
+   *   Firefox 116+ → 'selfBrowserSurface' (tab appears in the picker)
+   *   Safari/other → 'manual'             (standard picker, user picks manually)
+   *   unsupported  → alert + error
    *
-   * Možné hodnoty pro ruční override:
-   *   'preferCurrentTab'   — vynutí Chrome chování (selže v jiných browserech)
-   *   'selfBrowserSurface' — vynutí zobrazení tabu v pickeru
-   *   'manual'             — standardní picker bez úprav
-   *   'none'               — alias pro 'manual', explicitní záměr
+   * Manual override values:
+   *   'preferCurrentTab'   — force Chrome behaviour (fails in other browsers)
+   *   'selfBrowserSurface' — force tab to appear in picker
+   *   'manual'             — standard picker, no modifications
+   *   'none'               — alias for 'manual'
    */
   currentTab?: "preferCurrentTab" | "selfBrowserSurface" | "manual" | "none";
 
-  /** 'client' = sdílí obrazovku, 'agent' = sleduje (default: 'client') */
+  /** 'client' = shares screen, 'agent' = views (default: 'client') */
   role?: "agent" | "client";
 
   /** Called when screen share session starts */
@@ -86,8 +110,8 @@ export interface ViewerConfig {
   apiUrl?: string;
 
   /**
-   * ICE servery pro WebRTC. Výchozí: Google STUN (stun:stun.l.google.com:19302).
-   * Přepište pro vlastní TURN/STUN servery bez potřeby rebuild SDK.
+   * ICE servers for WebRTC. Default: Google STUN (stun:stun.l.google.com:19302).
+   * Override with your own STUN/TURN servers — no SDK rebuild required.
    */
   iceServers?: RTCIceServer[];
   testMode?: boolean;

@@ -40,6 +40,8 @@ export type {
   ScreenShareSession,
   ScreenShareState,
   ScreenShareStatus,
+  VideoQuality,
+  VideoQualityCustom,
   ViewerConfig,
   ViewerStatus,
   ViewerState,
