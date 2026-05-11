@@ -66,7 +66,7 @@ export class ScreenViewSessionManager {
     return new Promise<MediaStream>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(
-          this.makeError("CONNECTION_FAILED", "Timeout: klient se nepřipojil"),
+          this.makeError("CONNECTION_FAILED", "Timeout: client did not connect"),
         );
       }, 120_000);
 
@@ -98,7 +98,7 @@ export class ScreenViewSessionManager {
       if (state === "failed" || state === "disconnected") {
         this.endSession("error");
       } else if (state === "connected") {
-        console.log("[WebRTC] P2P spojeni uspesne navazano");
+        console.log("[WebRTC] P2P connection established");
       }
     };
 
@@ -205,7 +205,7 @@ function createTestStream(): MediaStream {
     ctx.fillText("TEST MODE", 640, 340);
     ctx.fillStyle = "#555";
     ctx.font = "22px sans-serif";
-    ctx.fillText("Simulovaný příchozí obraz", 640, 395);
+    ctx.fillText("Simulated incoming stream", 640, 395);
     ctx.fillStyle = "#333";
     ctx.font = "16px monospace";
     ctx.fillText(`t=${t}`, 640, 440);

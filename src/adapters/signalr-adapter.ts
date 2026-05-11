@@ -170,7 +170,7 @@ export class RealSignalRAdapter implements SignalRAdapter {
         try {
           const parsed = JSON.parse(candidateJson);
 
-          console.log("[WebRTC] Přijatý ICE kandidát:", parsed);
+          console.log("[WebRTC] Received ICE candidate:", parsed);
 
           if (!parsed || !parsed.candidate) {
             return;
@@ -182,7 +182,7 @@ export class RealSignalRAdapter implements SignalRAdapter {
 
           callback(parsed);
         } catch (err) {
-          console.error("[WebRTC] Chyba při parsování ICE kandidáta:", err);
+          console.error("[WebRTC] Failed to parse ICE candidate:", err);
         }
       },
     );

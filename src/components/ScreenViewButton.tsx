@@ -184,7 +184,7 @@ export function ScreenViewButton({
       } catch (err: unknown) {
         if (!open) return;
         const e = err as { message?: string };
-        setErrorMsg(e.message ?? "Nepodařilo se připojit");
+        setErrorMsg(e.message ?? "Failed to connect");
         setStatus("error");
       }
     },
@@ -284,13 +284,13 @@ export function ScreenViewButton({
           }}
         >
           <div className="sssdk-modal">
-            {/* ── Viewing stav ── */}
+            {/* ── Viewing state ── */}
             {status === "viewing" ? (
               <>
                 <div className="sssdk-header">
                   <div className="sssdk-title">
                     <div className="sssdk-title-dot sharing" />
-                    Příchozí obraz
+                    Incoming screen
                   </div>
                   <button className="sssdk-close" onClick={handleClose}>
                     ✕
@@ -311,7 +311,7 @@ export function ScreenViewButton({
                       style={{ position: "absolute", inset: 0, background: "transparent" }}
                     >
                       <div className="sssdk-spinner" style={{ width: 28, height: 28, borderWidth: 3 }} />
-                      <span style={{ fontSize: 13 }}>Navazuji P2P spojení…</span>
+                      <span style={{ fontSize: 13 }}>Establishing P2P connection…</span>
                     </div>
                   )}
                   {videoPlaying && <div className="sssdk-preview-badge">LIVE</div>}
@@ -321,7 +321,7 @@ export function ScreenViewButton({
                   <div className="sssdk-sharing-info">
                     <span className="sssdk-sharing-live">LIVE</span>
                     <span className="sssdk-sharing-text">
-                      Zobrazuji obrazovku klienta
+                      Viewing client's screen
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -336,24 +336,24 @@ export function ScreenViewButton({
                       className="sssdk-btn sssdk-btn-stop"
                       onClick={handleStop}
                     >
-                      Ukončit
+                      Stop
                     </button>
                   </div>
                 </div>
               </>
             ) : (
               <>
-                {/* ── Idle / registering / waiting / error stav ── */}
+                {/* ── Idle / registering / waiting / error state ── */}
                 <div className="sssdk-header">
                   <div className="sssdk-title">
                     <div
                       className={`sssdk-title-dot${status === "connecting" ? " sharing" : ""}`}
                     />
                     {status === "connecting"
-                      ? "Čekám na klienta…"
+                      ? "Waiting for client…"
                       : status === "registering"
-                        ? "Generuji kód…"
-                        : "Zobrazit obrazovku"}
+                        ? "Generating code…"
+                        : "View screen"}
                   </div>
                   <button className="sssdk-close" onClick={handleClose}>
                     ✕
@@ -367,7 +367,7 @@ export function ScreenViewButton({
                         className="sssdk-section-label"
                         style={{ marginBottom: 14 }}
                       >
-                        Kód pro klienta
+                        Code for the client
                       </div>
                       <div className="sssdk-viewer-code-display">
                         {code.split("").map((d, i) => (
@@ -381,7 +381,7 @@ export function ScreenViewButton({
                         onClick={handleCopy}
                       >
                         {COPY_ICON}{" "}
-                        {copied ? "✓ Zkopírováno" : "Kopírovat kód"}
+                        {copied ? "✓ Copied" : "Copy code"}
                       </button>
                       <div className="sssdk-viewer-waiting-status">
                         <div className="sssdk-waiting-dots">
@@ -389,7 +389,7 @@ export function ScreenViewButton({
                           <span />
                           <span />
                         </div>
-                        <span>Čekám na klienta…</span>
+                        <span>Waiting for client…</span>
                       </div>
                     </div>
                   ) : status === "error" ? (
@@ -413,7 +413,7 @@ export function ScreenViewButton({
                   ) : (
                     <div className="sssdk-preview-placeholder">
                       {EYE_ICON_BIG}
-                      <span>Klikněte na tlačítko pro zahájení</span>
+                      <span>Click the button to start</span>
                     </div>
                   )}
                 </div>
@@ -425,7 +425,7 @@ export function ScreenViewButton({
                       style={{ flex: 1 }}
                       onClick={handleClose}
                     >
-                      Zrušit
+                      Cancel
                     </button>
                   ) : status === "error" ? (
                     <>
@@ -434,14 +434,14 @@ export function ScreenViewButton({
                         style={{ flex: 1 }}
                         onClick={handleClose}
                       >
-                        Zavřít
+                        Close
                       </button>
                       <button
                         className="sssdk-btn sssdk-btn-primary"
                         style={{ flex: 1 }}
                         onClick={handleRetry}
                       >
-                        Zkusit znovu
+                        Try again
                       </button>
                     </>
                   ) : (
@@ -453,10 +453,10 @@ export function ScreenViewButton({
                     >
                       {status === "registering" ? (
                         <>
-                          <div className="sssdk-spinner" /> Generuji kód…
+                          <div className="sssdk-spinner" /> Generating code…
                         </>
                       ) : (
-                        "Vygenerovat kód"
+                        "Generate code"
                       )}
                     </button>
                   )}

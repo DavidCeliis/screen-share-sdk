@@ -1,6 +1,6 @@
-// Entry point pro IIFE bundle — použití přes <script> tag v čistém HTML.
-// Exponuje globální objekt window.ScreenShareSDK
-// React zde záměrně není — jen vanilla JS API.
+// Entry point for the IIFE bundle — used via <script> tag in plain HTML.
+// Exposes a global window.ScreenShareSDK object.
+// React is intentionally excluded — vanilla JS API only.
 
 export { createScreenShareButton } from './components/button-vanilla';
 export { ScreenShareModal } from './components/modal-vanilla';

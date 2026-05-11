@@ -1,28 +1,28 @@
 # screen-share-sdk
 
-TypeScript SDK pro sdílení obrazovky přes WebRTC + SignalR. Funguje v React i Vanilla JS. SignalR se bundluje automaticky — dev nemusí nic instalovat navíc.
+TypeScript SDK for screen sharing via WebRTC + SignalR. Works in React and Vanilla JS. SignalR is bundled automatically — no extra installation needed.
 
-## Instalace
+## Installation
 
 ```bash
 npm install screen-share-sdk
-# nebo
+# or
 yarn add screen-share-sdk
 ```
 
-> React je volitelná peer dependency. Pokud ho máš v projektu, fungují `ScreenShareButton` a `useScreenShare`. Pokud ne, použij `createScreenShareButton` nebo `ScreenShareModal`.
+> React is an optional peer dependency. If it's in your project, `ScreenShareButton` and `useScreenShare` are available. Otherwise use `createScreenShareButton` or `ScreenShareModal`.
 
-### Lokální vývoj (bez npm publish)
+### Local development (without npm publish)
 
 ```bash
-# v sdk složce — spusť watch mode
+# in the sdk folder — start watch mode
 npm run dev
 
-# v tvém projektu
-npm install ../cesta/k/screen-share-sdk
+# in your project
+npm install ../path/to/screen-share-sdk
 ```
 
-Pro live reload bez nutnosti ručně buildovat přidej do `next.config.js`:
+For live reload without manual rebuilding, add to `next.config.js`:
 
 ```js
 const nextConfig = {
@@ -36,7 +36,7 @@ const nextConfig = {
 
 ---
 
-## Rychlý start
+## Quick start
 
 ### React
 
@@ -46,11 +46,11 @@ import { ScreenShareButton } from 'screen-share-sdk';
 function App() {
   return (
     <ScreenShareButton
-      label="Sdílet obrazovku"
+      label="Share screen"
       config={{
-        testMode: true, // ← odstraň pro produkci
-        onSessionStart: (id) => console.log('Session zahájena:', id),
-        onSessionEnd: (reason) => console.log('Session ukončena:', reason),
+        testMode: true, // ← remove for production
+        onSessionStart: (id) => console.log('Session started:', id),
+        onSessionEnd: (reason) => console.log('Session ended:', reason),
       }}
     />
   );
@@ -70,18 +70,18 @@ createScreenShareButton({
 
 ---
 
-## Témata (dark / light mode)
+## Themes (dark / light mode)
 
-SDK podporuje čtyři režimy přes prop `themeMode` (React) nebo option `themeMode` (Vanilla JS).
+SDK supports four modes via the `themeMode` prop (React) or option (Vanilla JS).
 
-| Hodnota | Chování |
+| Value | Behaviour |
 |---|---|
-| `"auto"` | Sleduje systémové nastavení OS / browseru přes `prefers-color-scheme`. **Výchozí.** |
-| `"dark"` | Vždy tmavé, bez ohledu na systém |
-| `"light"` | Vždy světlé, bez ohledu na systém |
-| `"custom"` | Ovládáš sám přes `setThemeMode()` nebo hook `useThemeMode()` |
+| `"auto"` | Follows system/browser preference via `prefers-color-scheme`. **Default.** |
+| `"dark"` | Always dark, regardless of system |
+| `"light"` | Always light, regardless of system |
+| `"custom"` | Controlled programmatically via `setThemeMode()` or `useThemeMode()` |
 
-### Auto (výchozí)
+### Auto (default)
 
 ```tsx
 // React
@@ -91,7 +91,7 @@ SDK podporuje čtyři režimy přes prop `themeMode` (React) nebo option `themeM
 createScreenShareButton({ container: '#btn' }) // = themeMode: 'auto'
 ```
 
-### Dark / Light natvrdo
+### Fixed dark / light
 
 ```tsx
 // React
@@ -105,35 +105,35 @@ createScreenShareButton({ container: '#btn', themeMode: 'light' });
 
 ### Custom — React
 
-Použij hook `useThemeMode` — vrací aktuální téma a setter, který propaguje změnu do všech aktivních overlayů naráz.
+Use the `useThemeMode` hook — returns the current theme and a setter that propagates changes to all active overlays at once.
 
 ```tsx
 import { useThemeMode, ScreenShareButton } from 'screen-share-sdk';
 
 function App() {
-  const [theme, setTheme] = useThemeMode('dark'); // výchozí hodnota
+  const [theme, setTheme] = useThemeMode('dark'); // initial value
 
   return (
     <>
       <ScreenShareButton themeMode="custom" />
 
       <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-        Přepnout téma
+        Toggle theme
       </button>
     </>
   );
 }
 ```
 
-Pokud máš téma uložené ve vlastním stavu (Redux, Zustand, Context…), stačí volat `setThemeMode` přímo:
+If your theme lives in external state (Redux, Zustand, Context…), call `setThemeMode` directly:
 
 ```tsx
 import { setThemeMode, ScreenShareButton } from 'screen-share-sdk';
 
-// Kdekoli v aplikaci — React state nebo event handler
+// Anywhere in the app — React state or event handler
 setThemeMode('light');
 
-// Komponenta jen oznamuje, že chce custom řízení
+// The component just declares it wants custom control
 <ScreenShareButton themeMode="custom" />
 ```
 
@@ -144,13 +144,13 @@ import { setThemeMode, createScreenShareButton } from 'screen-share-sdk';
 
 createScreenShareButton({ container: '#btn', themeMode: 'custom' });
 
-// Přepnutí kdykoli — ovlivní všechny otevřené overlaye ihned
+// Toggle at any time — affects all open overlays immediately
 document.getElementById('toggle').addEventListener('click', () => {
   setThemeMode('light');
 });
 ```
 
-`setThemeMode` funguje globálně — i při přímém použití `ScreenShareModal` nebo `ScreenViewModal`:
+`setThemeMode` works globally — including direct use of `ScreenShareModal` or `ScreenViewModal`:
 
 ```js
 import { setThemeMode, ScreenShareModal } from 'screen-share-sdk';
@@ -158,28 +158,58 @@ import { setThemeMode, ScreenShareModal } from 'screen-share-sdk';
 const modal = new ScreenShareModal({ themeMode: 'custom' });
 modal.open();
 
-setThemeMode('light'); // změní téma otevřeného modalu okamžitě
+setThemeMode('light'); // updates the open modal immediately
 ```
 
 ---
 
-## Konfigurace (`ScreenShareConfig`)
+## Configuration (`ScreenShareConfig`)
 
-| Vlastnost | Typ | Výchozí | Popis |
+| Property | Type | Default | Description |
 |---|---|---|---|
-| `testMode` | `boolean` | `true` | Simuluje spojení, nevyžaduje BE ani SignalR |
-| `testModeDelay` | `number` | `1500` | Zpoždění simulace připojení v ms |
-| `hubUrl` | `string` | — | URL SignalR hubu (nutné pokud `testMode: false`) |
-| `iceServers` | `RTCIceServer[]` | Google STUN | STUN/TURN servery pro WebRTC (viz níže) |
-| `displaySurface` | viz níže | `"browser"` | Co smí uživatel sdílet — tab / okno / monitor / cokoliv |
-| `currentTab` | viz níže | auto | Přepíše automatickou detekci tab-capture módu |
-| `onSessionStart` | `(id: string) => void` | — | Zavolá se při úspěšném připojení |
-| `onSessionEnd` | `(reason) => void` | — | Zavolá se při ukončení sdílení |
-| `onError` | `(err) => void` | — | Chybový callback |
+| `testMode` | `boolean` | `true` | Simulates a connection, no backend or SignalR needed |
+| `testModeDelay` | `number` | `1500` | Simulated connection delay in ms |
+| `hubUrl` | `string` | — | SignalR hub URL (required when `testMode: false`) |
+| `iceServers` | `RTCIceServer[]` | Google STUN | STUN/TURN servers for WebRTC (see below) |
+| `videoQuality` | see below | `"medium"` | Resolution and FPS of the outgoing video |
+| `displaySurface` | see below | `"browser"` | What the user can share — tab / window / monitor / anything |
+| `currentTab` | see below | auto | Overrides automatic tab-capture mode detection |
+| `onSessionStart` | `(id: string) => void` | — | Called when the session is successfully established |
+| `onSessionEnd` | `(reason) => void` | — | Called when sharing ends |
+| `onError` | `(err) => void` | — | Error callback |
 
-### ICE servery — STUN / TURN (`iceServers`)
+### Video quality (`videoQuality`)
 
-Ve výchozím stavu SDK používá Google's veřejný STUN server. Pro produkci nebo privátní sítě stačí předat vlastní servery — bez nutnosti rebuild SDK.
+Controls the resolution and FPS of the stream sent over WebRTC. Defaults to `"medium"` (1280×720 @ 15 fps).
+
+| Preset | Resolution | FPS | Typical use |
+|---|---|---|---|
+| `"low"` | 854×480 | 10 | Slow networks, low-end clients |
+| `"medium"` | 1280×720 | 15 | **Default** — good balance |
+| `"high"` | 1920×1080 | 30 | Fast LAN / powerful hardware |
+| `"source"` | native | native | No constraints (may be 2K/4K) |
+
+```js
+// Preset
+config: { videoQuality: 'low' }
+config: { videoQuality: 'high' }
+
+// Custom values — all optional
+config: {
+  videoQuality: { width: 1920, height: 1080, frameRate: 24 }
+}
+
+// FPS only, no resolution constraint
+config: {
+  videoQuality: { frameRate: 20 }
+}
+```
+
+> Values are passed as `{ ideal, max }` constraints to `getDisplayMedia` — the browser tries to honour them, but the actual resolution may also depend on system capabilities, especially when sharing a full screen or window.
+
+### ICE servers — STUN / TURN (`iceServers`)
+
+By default the SDK uses Google's public STUN server. For production or private networks, pass your own servers — no SDK rebuild required.
 
 ```js
 config: {
@@ -195,89 +225,89 @@ config: {
 }
 ```
 
-> `iceServers` se nastavuje identicky pro sdílecí stranu (`ScreenShareConfig`) i pro stranu zobrazující (`ViewerConfig`). Oba session managery se shodují na výchozím Google STUN pokud nic nenastavíš.
+> `iceServers` is configured identically for the sharing side (`ScreenShareConfig`) and the viewing side (`ViewerConfig`). Both session managers default to Google STUN if nothing is specified.
 
-### Výběr sdíleného povrchu (`displaySurface`)
+### Display surface (`displaySurface`)
 
-Řídí co browser nabídne uživateli v pickeru. Funguje jako hint — browser ho respektuje dle svých možností (Chrome ho typicky respektuje dobře, Firefox/Safari méně).
+Controls what the browser offers the user in the picker. Works as a hint — browsers honour it to varying degrees (Chrome typically respects it well, Firefox/Safari less so).
 
-| Hodnota | Co uživatel vidí v pickeru | Chrome `preferCurrentTab` logika |
+| Value | What the user sees in the picker | Chrome `preferCurrentTab` logic |
 |---|---|---|
-| `"browser"` | Pouze záložky prohlížeče. **Výchozí.** | Aktivní — Chrome přeskočí picker |
-| `"window"` | Okna aplikací | Ignorována |
-| `"monitor"` | Celá obrazovka PC | Ignorována |
-| `"any"` | Vše — záložky, okna, monitory | Ignorována |
+| `"browser"` | Browser tabs only. **Default.** | Active — Chrome skips the picker |
+| `"window"` | Application windows | Ignored |
+| `"monitor"` | Full screen | Ignored |
+| `"any"` | Everything — tabs, windows, monitors | Ignored |
 
 ```js
-// Chci aby user mohl vybrat cokoliv
+// Let the user pick anything
 config: { displaySurface: 'any', ... }
 
-// Chci jen celé obrazovky
+// Full screen only
 config: { displaySurface: 'monitor', ... }
 
-// Chci jen okna aplikací
+// Application windows only
 config: { displaySurface: 'window', ... }
 
-// Výchozí — pouze záložky, Chrome přeskočí picker
-config: { displaySurface: 'browser', ... } // nebo vynechat
+// Default — tabs only, Chrome skips the picker
+config: { displaySurface: 'browser', ... } // or omit
 ```
 
-> Jakmile nastavíš cokoliv jiného než `"browser"`, `currentTab` optimalizace (viz níže) se automaticky ignoruje — uživatel vždy uvidí standardní picker bez ohledu na browser.
+> As soon as you set anything other than `"browser"`, the `currentTab` optimisation (see below) is automatically ignored — the user always sees the standard picker regardless of browser.
 
-### Podpora aktuálního tabu (`currentTab`)
+### Current tab support (`currentTab`)
 
-SDK automaticky detekuje co browser umí a zvolí nejlepší dostupnou metodu. Ruční override je možný přes `config.currentTab`.
+The SDK auto-detects what the browser supports and picks the best available method. Manual override is possible via `config.currentTab`. Only applies when `displaySurface` is `"browser"` (or not set).
 
-| Browser | Auto-detekce | Chování |
+| Browser | Auto-detection | Behaviour |
 |---|---|---|
-| Chrome / Edge 94+ | `preferCurrentTab` | Picker se přeskočí, tab se zachytí okamžitě |
-| Firefox 116+ | `selfBrowserSurface` | Aktuální tab se zobrazí v pickeru |
-| Safari / starší FF | `manual` | Standardní picker, tab není v nabídce — uživatel vybírá jiný povrch |
-| Mobil / starý browser | `unsupported` | Alert s vysvětlením, sdílení není možné |
+| Chrome / Edge 94+ | `preferCurrentTab` | Picker is skipped, tab is captured immediately |
+| Firefox 116+ | `selfBrowserSurface` | Current tab appears in the picker |
+| Safari / older FF | `manual` | Standard picker, tab not in the list — user must pick another surface |
+| Mobile / old browser | `unsupported` | Alert with explanation, sharing is not possible |
 
-Možné hodnoty pro ruční override:
+Manual override values:
 
 ```ts
 config: {
-  currentTab: 'preferCurrentTab'   // vynutí Chrome chování
-  currentTab: 'selfBrowserSurface' // tab se zobrazí v pickeru
-  currentTab: 'manual'             // standardní picker
-  currentTab: 'none'               // alias pro manual
+  currentTab: 'preferCurrentTab'   // force Chrome behaviour
+  currentTab: 'selfBrowserSurface' // show tab in picker
+  currentTab: 'manual'             // standard picker
+  currentTab: 'none'               // alias for manual
 }
 ```
 
-> **Safari a manual mode:** Aktuální tab nelze v Safari zobrazit v pickeru — je to záměrná limitace Apple. Uživatel musí sdílet celou obrazovku nebo jiné okno.
+> **Safari and manual mode:** The current tab cannot appear in Safari's picker — this is an intentional Apple limitation. The user must share the full screen or another window.
 
 ---
 
-## Uživatelský flow
+## User flow
 
 ```
-1.  Kliknutí na tlačítko
-     ├─ Chrome/Edge → browser rovnou žádá o povolení (bez tlačítka "Vybrat")
-     └─ ostatní    → zobrazí se tlačítko "Vybrat obrazovku"
+1.  Button click
+     ├─ Chrome/Edge → browser immediately requests permission (no "Select screen" button)
+     └─ other       → "Select screen" button is shown
 
-2.  Povolení zamítnuto?
-     └─ zobrazí se vysvětlení + tlačítko "Zkusit znovu" (žádné zavírání modalu)
+2.  Permission denied?
+     └─ explanation + "Try again" button shown (modal stays open)
 
-3.  Uživatel zadá 6-místný kód od agenta
-     └─ kód se drží v paměti — při příštím otevření je předvyplněný
+3.  User enters the 6-digit agent code
+     └─ code is remembered — pre-filled on next open
 
-4.  Kliknutí na "Připojit"
-     └─ SignalR joinSession(code) → server vrátí sessionId
-     └─ WebRTC: createOffer → sendOffer → přijme answer
-     └─ modal se automaticky zavře, sdílení začíná
+4.  Click "Connect"
+     └─ SignalR joinSession(code) → server returns sessionId
+     └─ WebRTC: createOffer → sendOffer → receives answer
+     └─ modal closes automatically, sharing begins
 
-5.  Kliknutí na tlačítko během aktivního sdílení
-     └─ otevře se kontrolní panel (živý náhled, tlačítka Přepnout / Zastavit)
+5.  Click the button while sharing is active
+     └─ control panel opens (live preview, Switch / Stop buttons)
 
-6.  Přepnutí obrazovky ("Přepnout")
-     └─ nový picker → replaceTrack() → SignalR/WebRTC spojení zůstává
+6.  Switch screen ("Switch")
+     └─ new picker → replaceTrack() → SignalR/WebRTC connection stays alive
 
-7.  Ukončení sdílení
-     ├─ tlačítko "Zastavit" v modalu
-     ├─ nativní lišta browseru "Přestáváte sdílet"
-     └─ agent se odpojí → onSessionEnd callback
+7.  End sharing
+     ├─ "Stop" button in the modal
+     ├─ browser's native "Stop sharing" bar
+     └─ agent disconnects → onSessionEnd callback
 ```
 
 ---
@@ -286,26 +316,42 @@ config: {
 
 ### `<ScreenShareButton>` (React)
 
-Hlavní komponenta — obsahuje trigger tlačítko i celý modal flow.
+Main component — includes the trigger button and the full modal flow.
 
 ```tsx
 <ScreenShareButton
-  label="Share screen"          // text výchozího tlačítka
-  className="my-btn"            // extra CSS třída pro trigger
-  style={{ borderRadius: 8 }}   // inline styly pro trigger
+  label="Share screen"          // trigger button text
+  className="my-btn"            // extra CSS class for the trigger
+  style={{ borderRadius: 8 }}   // inline styles for the trigger
   config={sdkConfig}
-  connection={existingHubConn}  // předání existujícího SignalR HubConnection
+  connection={existingHubConn}  // pass an existing SignalR HubConnection
 >
-  {/* volitelný render prop pro vlastní trigger element */}
+  {/* optional render prop for a custom trigger element */}
   {({ onClick, isSharing }) => (
     <MyButton onClick={onClick} active={isSharing} />
   )}
 </ScreenShareButton>
 ```
 
+### `<ScreenViewButton>` (React)
+
+Viewer-side equivalent of `ScreenShareButton` — generates a code, waits for a client to connect, and displays the incoming stream.
+
+```tsx
+<ScreenViewButton
+  label="View screen"
+  config={viewerConfig}
+  connection={existingHubConn}
+>
+  {({ onClick, isViewing }) => (
+    <MyButton onClick={onClick} active={isViewing} />
+  )}
+</ScreenViewButton>
+```
+
 ### `useScreenShare(config?, connection?)` (React hook)
 
-Pro vlastní UI — dává plnou kontrolu nad stavem.
+For custom UI — gives full control over state.
 
 ```tsx
 const { state, requestScreen, startSession, stopSession } = useScreenShare(config);
@@ -316,21 +362,44 @@ const { state, requestScreen, startSession, stopSession } = useScreenShare(confi
 // state.error: ScreenShareError | null
 ```
 
+### `useScreenView(config?, connection?)` (React hook)
+
+```tsx
+const { state, register, startViewing, stopViewing } = useScreenView(config);
+
+// state.status: 'idle' | 'registering' | 'waiting' | 'connecting' | 'viewing' | 'error'
+// state.code: string | null
+// state.stream: MediaStream | null
+// state.error: ScreenShareError | null
+```
+
 ### `createScreenShareButton(opts)` (Vanilla JS)
 
 ```js
 const btn = createScreenShareButton({
-  container: '#toolbar',    // CSS selektor nebo HTMLElement
+  container: '#toolbar',    // CSS selector or HTMLElement
   label: 'Share screen',
   className: 'my-class',
   style: { borderRadius: '8px' },
   config: sdkConfig,
   connection: existingConnection,
 });
-// → vrací HTMLButtonElement
+// → returns HTMLButtonElement
 ```
 
-### `ScreenShareModal` (Vanilla JS — přímá kontrola modalu)
+### `createScreenViewButton(opts)` (Vanilla JS)
+
+```js
+const btn = createScreenViewButton({
+  container: '#toolbar',
+  label: 'View screen',
+  config: viewerConfig,
+  connection: existingConnection,
+});
+// → returns HTMLButtonElement
+```
+
+### `ScreenShareModal` (Vanilla JS — direct modal control)
 
 ```js
 import { ScreenShareModal } from 'screen-share-sdk';
@@ -346,7 +415,7 @@ modal.open();
 modal.close();
 ```
 
-### `ScreenShareSessionManager` (pokročilé použití)
+### `ScreenShareSessionManager` (advanced usage)
 
 ```js
 import { ScreenShareSessionManager } from 'screen-share-sdk';
@@ -356,21 +425,21 @@ const manager = new ScreenShareSessionManager({
   hubUrl: '/hubs/screenshare',
 });
 
-// Detekce podpory browseru
+// Detect browser support
 const mode = manager.getEffectiveMode();
 // → 'preferCurrentTab' | 'selfBrowserSurface' | 'manual' | 'unsupported'
 
-// Zachycení obrazovky (respektuje detekovaný mode)
+// Capture the screen (respects detected mode)
 const stream = await manager.requestScreen();
 
-// Spuštění session
+// Start the session
 const session = await manager.startSession(stream, '123456');
 
-// Přepnutí streamu bez přerušení spojení
+// Switch the stream without interrupting the connection
 const newStream = await manager.requestScreen();
 await manager.replaceVideoTrack(newStream.getVideoTracks()[0]);
 
-// Ukončení
+// Stop
 session.stop();
 ```
 
@@ -383,11 +452,11 @@ const support = detectCurrentTabSupport();
 // → 'preferCurrentTab' | 'selfBrowserSurface' | 'manual' | 'unsupported'
 
 if (support === 'manual') {
-  // zobraz uživateli nápovědu jak vybrat správné okno
+  // show the user a hint on how to select the right window
 }
 
 if (support === 'unsupported') {
-  // skryj tlačítko sdílení úplně
+  // hide the share button entirely
 }
 ```
 
@@ -395,19 +464,19 @@ if (support === 'unsupported') {
 
 ## Test mode
 
-Kód `000000` vždy simuluje chybu (neplatný kód) — pro testování error stavu.
-Jakýkoliv jiný 6-místný kód simuluje úspěšné připojení.
+Code `000000` always simulates an error (invalid code) — for testing the error state.
+Any other 6-digit code simulates a successful connection.
 
 ```js
 config: {
   testMode: true,
-  testModeDelay: 2000, // jak dlouho "připojování" trvá v ms
+  testModeDelay: 2000, // how long the "connecting" phase takes in ms
 }
 ```
 
 ---
 
-## Produkční nasazení
+## Production deployment
 
 ```js
 config: {
@@ -418,9 +487,9 @@ config: {
 }
 ```
 
-### Předání existujícího SignalR spojení
+### Passing an existing SignalR connection
 
-Pokud máš v aplikaci již otevřené SignalR spojení, SDK ho může sdílet místo otevírání nového:
+If your app already has an open SignalR connection, the SDK can reuse it instead of opening a new one:
 
 ```ts
 import * as signalR from '@microsoft/signalr';
@@ -431,13 +500,13 @@ const conn = new signalR.HubConnectionBuilder()
   .build();
 await conn.start();
 
-// SDK použije toto spojení
+// SDK will use this connection
 <ScreenShareButton connection={conn} config={{ hubUrl: '/hubs/app' }} />
 ```
 
-### Očekávané SignalR metody na serveru
+### Expected SignalR methods on the server
 
-| Metoda (invoke) | Parametry | Vrací |
+| Method (invoke) | Parameters | Returns |
 |---|---|---|
 | `JoinSession` | `code: string` | `{ sessionId: string }` |
 | `SendOffer` | `sessionId: string, offerJson: string` | — |

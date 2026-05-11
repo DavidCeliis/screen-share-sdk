@@ -56,9 +56,9 @@ export class ScreenViewModal {
         opts.onSessionEnd?.(reason);
         opts.config?.onSessionEnd?.(reason);
         if (reason === 'remote_disconnect') {
-          showToast('Druhá strana ukončila spojení', 'warning');
+          showToast('The other side ended the connection', 'warning');
         } else if (reason === 'error') {
-          showToast('Spojení bylo neočekávaně přerušeno', 'error');
+          showToast('Connection was unexpectedly interrupted', 'error');
         }
         this._closeOverlay();
       },
@@ -104,12 +104,12 @@ export class ScreenViewModal {
       <div class="sssdk-preview" id="sssdk-preview">
         <div class="sssdk-preview-placeholder">
           ${EYE_ICON_LG}
-          <span>Klikněte na tlačítko pro zahájení</span>
+          <span>Click the button to start</span>
         </div>
       </div>
       <div class="sssdk-actions" style="margin-top:4px">
         <button class="sssdk-btn sssdk-btn-primary" id="sssdk-start-btn" style="flex:1">
-          Vygenerovat kód
+          Generate code
         </button>
       </div>`;
 
@@ -141,7 +141,7 @@ export class ScreenViewModal {
     const btn = document.getElementById("sssdk-start-btn") as HTMLButtonElement | null;
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = `<div class="sssdk-spinner"></div> Generuji kód…`;
+      btn.innerHTML = `<div class="sssdk-spinner"></div> Generating code…`;
     }
   }
 
@@ -169,25 +169,25 @@ export class ScreenViewModal {
       ).join("");
       preview.innerHTML = `
         <div class="sssdk-viewer-waiting">
-          <div class="sssdk-section-label" style="margin-bottom:14px">Kód pro klienta</div>
+          <div class="sssdk-section-label" style="margin-bottom:14px">Code for the client</div>
           <div class="sssdk-viewer-code-display" id="sssdk-code-display">
             ${digits}
           </div>
           <button class="sssdk-viewer-copy-btn" id="sssdk-copy-btn">
-            ${COPY_ICON} Kopírovat kód
+            ${COPY_ICON} Copy code
           </button>
           <div class="sssdk-viewer-waiting-status">
             <div class="sssdk-waiting-dots">
               <span></span><span></span><span></span>
             </div>
-            <span>Čekám na klienta…</span>
+            <span>Waiting for client…</span>
           </div>
         </div>`;
     }
 
     const actions = document.querySelector<HTMLElement>(".sssdk-actions");
     if (actions) {
-      actions.innerHTML = `<button class="sssdk-btn sssdk-btn-secondary" id="sssdk-cancel-btn" style="flex:1">Zrušit</button>`;
+      actions.innerHTML = `<button class="sssdk-btn sssdk-btn-secondary" id="sssdk-cancel-btn" style="flex:1">Cancel</button>`;
       document.getElementById("sssdk-cancel-btn")?.addEventListener("click", () => {
         this.manager.endSession("user_stopped");
         this.status = "idle";
@@ -200,9 +200,9 @@ export class ScreenViewModal {
       navigator.clipboard.writeText(code).catch(() => {});
       const btn = document.getElementById("sssdk-copy-btn");
       if (btn) {
-        btn.textContent = "✓ Zkopírováno";
+        btn.textContent = "✓ Copied";
         setTimeout(() => {
-          if (btn) btn.innerHTML = `${COPY_ICON} Kopírovat kód`;
+          if (btn) btn.innerHTML = `${COPY_ICON} Copy code`;
         }, 2000);
       }
     });
@@ -217,7 +217,7 @@ export class ScreenViewModal {
       if (!this.overlay) return; // user cancelled
       const e = err as { message?: string };
       this.status = "error";
-      this.showWaitingError(e.message ?? "Nepodařilo se připojit");
+      this.showWaitingError(e.message ?? "Failed to connect");
     }
   }
 
@@ -231,7 +231,7 @@ export class ScreenViewModal {
     const actions = document.querySelector<HTMLElement>(".sssdk-actions");
     if (actions) {
       actions.innerHTML = `
-        <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-cancel-btn" style="flex:1">Zavřít</button>
+        <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-cancel-btn" style="flex:1">Close</button>
         <button class="sssdk-btn sssdk-btn-primary" id="sssdk-retry-btn" style="flex:1">Zkusit znovu</button>`;
       document.getElementById("sssdk-cancel-btn")?.addEventListener("click", () => this.close());
       document.getElementById("sssdk-retry-btn")?.addEventListener("click", () => {
@@ -265,27 +265,27 @@ export class ScreenViewModal {
       <div class="sssdk-header">
         <div class="sssdk-title">
           <div class="sssdk-title-dot sharing"></div>
-          <span>Příchozí obraz</span>
+          <span>Incoming screen</span>
         </div>
         <button class="sssdk-close" id="sssdk-close-btn">✕</button>
       </div>
       <div class="sssdk-preview" id="sssdk-preview">
         <div class="sssdk-preview-placeholder" id="sssdk-p2p-loading" style="position:absolute;inset:0;background:transparent">
           <div class="sssdk-spinner" style="width:28px;height:28px;border-width:3px"></div>
-          <span style="font-size:13px">Navazuji P2P spojení…</span>
+          <span style="font-size:13px">Establishing P2P connection…</span>
         </div>
       </div>
       <div class="sssdk-sharing-status">
         <div class="sssdk-sharing-info">
           <span class="sssdk-sharing-live">LIVE</span>
-          <span class="sssdk-sharing-text">Zobrazuji obrazovku klienta</span>
+          <span class="sssdk-sharing-text">Viewing client's screen</span>
         </div>
         <div style="display:flex;gap:8px">
           <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-fullscreen-btn"
             style="flex:0;padding:0 14px;height:36px;font-size:13px">
             ${FULLSCREEN_ICON} Fullscreen
           </button>
-          <button class="sssdk-btn sssdk-btn-stop" id="sssdk-stop-btn">Ukončit</button>
+          <button class="sssdk-btn sssdk-btn-stop" id="sssdk-stop-btn">Stop</button>
         </div>
       </div>`;
 

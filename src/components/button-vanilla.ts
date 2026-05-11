@@ -41,7 +41,7 @@ export function createScreenShareButton(opts: VanillaButtonOptions): HTMLButtonE
 
   if (opts.style) Object.assign(btn.style, opts.style);
 
-  // Jedna instance modalu — drží veškerý stav po celou dobu životnosti tlačítka
+  // Single modal instance — holds all state for the entire lifetime of the button
   const modal = new ScreenShareModal({
     config: opts.config,
     connection: opts.connection,
@@ -55,7 +55,7 @@ export function createScreenShareButton(opts: VanillaButtonOptions): HTMLButtonE
       btn.innerHTML = `${SCREEN_ICON} ${opts.label ?? 'Share screen'}`;
     },
     onClose: () => {
-      // Tlačítko reflektuje sharing stav i po zavření modalu
+      // Button reflects sharing state even after the modal is closed
     },
   });
 

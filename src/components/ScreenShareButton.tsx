@@ -96,7 +96,7 @@ export function ScreenShareButton({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const managerRef = useRef<ScreenShareSessionManager | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
-  // Persistovaný kód — drží poslední úspěšně použitý kód
+  // persists the last successfully used code
   const lastCodeRef = useRef<string>("");
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export function ScreenShareButton({
         setStatus("preview");
         s.getVideoTracks()[0]?.addEventListener("ended", () => {
           setStream(null);
-          // Pokud sdílíme a uživatel stopne nativní lištou, zavřeme modal
+          // If sharing and user stops via the native browser bar, close the modal
           setStatus((prev) => (prev === "sharing" ? "idle" : "idle"));
           setOpen(false);
         });
@@ -181,7 +181,7 @@ export function ScreenShareButton({
   // ─── Open modal ────────────────────────────────────────────────────────────
 
   const handleOpen = async () => {
-    // Bug fix: pokud už sdílíme, otevřeme modal v sharing stavu — ne novou flow
+    // If already sharing, open the modal in sharing state — not a new flow
     if (status === "sharing") {
       setOpen(true);
       return;
@@ -192,7 +192,7 @@ export function ScreenShareButton({
     setPermissionDenied(false);
     setErrorMsg("");
 
-    // Předvyplnění posledního úspěšného kódu
+    // Pre-fill the last successfully used code
     if (lastCodeRef.current.length === 6) {
       setCode(lastCodeRef.current.split(""));
     } else {
@@ -208,7 +208,7 @@ export function ScreenShareButton({
   };
 
   const handleClose = () => {
-    // Pokud aktivně sdílíme, nezastavujeme stream — jen zavřeme modal
+    // If actively sharing, keep the stream alive — just close the modal
     if (status !== "sharing") {
       stream?.getTracks().forEach((t) => t.stop());
       setStream(null);
@@ -220,17 +220,17 @@ export function ScreenShareButton({
     await doRequestScreen(getManager());
   };
 
-  // ─── Switch stream (bez přerušení SignalR/WebRTC) ─────────────────────────
+  // ─── Switch stream (without interrupting SignalR/WebRTC) ──────────────────
 
   const handleSwitchScreen = async () => {
     const manager = getManager();
     try {
       const newStream = await manager.requestScreen();
 
-      // replaceTrack vymění video bez renegotiace WebRTC ani přerušení SignalR
+      // replaceTrack swaps video without WebRTC renegotiation or SignalR interruption
       await manager.replaceVideoTrack(newStream.getVideoTracks()[0]);
 
-      // Zastav starý stream
+      // Stop the old stream
       stream?.getTracks().forEach((t) => t.stop());
 
       setStream(newStream);
@@ -240,7 +240,7 @@ export function ScreenShareButton({
         setStatus("idle");
       });
     } catch {
-      // uživatel zrušil picker — nic neděláme, starý stream stále běží
+      // user cancelled the picker — do nothing, old stream is still running
     }
   };
 
@@ -254,10 +254,10 @@ export function ScreenShareButton({
     setErrorMsg("");
     try {
       await getManager().startSession(stream, codeStr);
-      lastCodeRef.current = codeStr; // ulož úspěšný kód
+      lastCodeRef.current = codeStr; // persist successful code
     } catch (err: unknown) {
       const e = err as { message?: string };
-      setErrorMsg(e.message ?? "Nepodařilo se připojit");
+      setErrorMsg(e.message ?? "Failed to connect");
       setStatus("preview");
     }
   };
@@ -349,13 +349,13 @@ export function ScreenShareButton({
           }}
         >
           <div className="sssdk-modal">
-            {/* ── Sharing stav ── */}
+            {/* ── Sharing state ── */}
             {status === "sharing" ? (
               <>
                 <div className="sssdk-header">
                   <div className="sssdk-title">
                     <div className="sssdk-title-dot sharing" />
-                    Sdílení aktivní
+                    Sharing active
                   </div>
                   <button className="sssdk-close" onClick={handleClose}>
                     ✕
@@ -381,7 +381,7 @@ export function ScreenShareButton({
                   <div className="sssdk-sharing-info">
                     <span className="sssdk-sharing-live">LIVE</span>
                     <span className="sssdk-sharing-text">
-                      Obrazovka se sdílí
+                      Screen is being shared
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -395,28 +395,28 @@ export function ScreenShareButton({
                       }}
                       onClick={handleSwitchScreen}
                     >
-                      {SCREEN_ICON} Přepnout
+                      {SCREEN_ICON} Switch
                     </button>
                     <button
                       className="sssdk-btn sssdk-btn-stop"
                       onClick={handleStop}
                     >
-                      Zastavit
+                      Stop
                     </button>
                   </div>
                 </div>
               </>
             ) : (
               <>
-                {/* ── Setup / permission denied stav ── */}
+                {/* ── Setup / permission denied state ── */}
                 <div className="sssdk-header">
                   <div className="sssdk-title">
                     <div
                       className={`sssdk-title-dot${status === "connecting" ? " sharing" : ""}`}
                     />
                     {status === "connecting"
-                      ? "Připojuji…"
-                      : "Sdílet obrazovku"}
+                      ? "Connecting…"
+                      : "Share screen"}
                   </div>
                   <button className="sssdk-close" onClick={handleClose}>
                     ✕
@@ -440,7 +440,7 @@ export function ScreenShareButton({
                       <div className="sssdk-preview-badge">PREVIEW</div>
                     </>
                   ) : permissionDenied ? (
-                    // Permission denied stav — zobrazíme vysvětlení a retry tlačítko
+                    // Permission denied state — show explanation and retry button
                     <div className="sssdk-preview-placeholder">
                       <svg
                         viewBox="0 0 24 24"
@@ -455,11 +455,11 @@ export function ScreenShareButton({
                         <path d="M12 8v4m0 4h.01" />
                       </svg>
                       <span style={{ color: "#ef4444", fontSize: 13 }}>
-                        Přístup ke sdílení byl zamítnut
+                        Screen sharing permission was denied
                       </span>
                       <span className="sssdk-permission-hint">
-                        Kliknutím níže zkuste znovu. Pokud browser přístup
-                        trvale blokuje, povolte sdílení v nastavení stránky.
+                        Click below to try again. If the browser keeps
+                        blocking access, allow sharing in the site settings.
                       </span>
                     </div>
                   ) : (
@@ -467,14 +467,14 @@ export function ScreenShareButton({
                       {MONITOR_BIG}
                       <span>
                         {isPreferCurrentTab
-                          ? "Čekám na povolení sdílení…"
-                          : 'Klikněte na "Vybrat obrazovku"'}
+                          ? "Waiting for sharing permission…"
+                          : 'Click "Select screen" to continue'}
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="sssdk-section-label">Kód agenta</div>
+                <div className="sssdk-section-label">Agent code</div>
                 <div className="sssdk-code-input-wrapper" onPaste={handlePaste}>
                   {code.map((d, i) => (
                     <input
@@ -496,14 +496,14 @@ export function ScreenShareButton({
                 <div className="sssdk-error-msg">{errorMsg}</div>
 
                 <div className="sssdk-actions">
-                  {/* preferCurrentTab: místo "Vybrat obrazovku" je "Zkusit znovu" jen při permission denied */}
+                  {/* preferCurrentTab: shows "Try again" instead of "Select screen" only when permission denied */}
                   {isPreferCurrentTab ? (
                     permissionDenied && (
                       <button
                         className="sssdk-btn sssdk-btn-secondary"
                         onClick={() => doRequestScreen(getManager())}
                       >
-                        {REFRESH_ICON} Zkusit znovu
+                        {REFRESH_ICON} Try again
                       </button>
                     )
                   ) : (
@@ -511,7 +511,7 @@ export function ScreenShareButton({
                       className="sssdk-btn sssdk-btn-secondary"
                       onClick={handleSelectScreen}
                     >
-                      {SCREEN_ICON} Vybrat obrazovku
+                      {SCREEN_ICON} Select screen
                     </button>
                   )}
                   <button
@@ -526,10 +526,10 @@ export function ScreenShareButton({
                   >
                     {status === "connecting" ? (
                       <>
-                        <div className="sssdk-spinner" /> Připojuji…
+                        <div className="sssdk-spinner" /> Connecting…
                       </>
                     ) : (
-                      "Připojit"
+                      "Connect"
                     )}
                   </button>
                 </div>

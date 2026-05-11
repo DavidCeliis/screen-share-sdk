@@ -32,7 +32,7 @@ export class ScreenShareModal {
   private opts: VanillaModalOptions;
   private manager: ScreenShareSessionManager;
 
-  // Perzistentní stav
+  // Persistent state
   private stream: MediaStream | null = null;
   private status: ScreenShareStatus = 'idle';
   private lastCode: string = '';
@@ -55,17 +55,17 @@ export class ScreenShareModal {
         setTimeout(() => this._closeOverlay(), 600);
       },
       onSessionEnd: (reason) => {
-        // Zavolá se jen ze session-manageru (např. remote_disconnect nebo track ended)
-        // handleStop() toto NEVOLÁ — řeší si reset sám
+        // Only called by the session manager (e.g. remote_disconnect or track ended)
+        // handleStop() does NOT call this — it handles its own reset
         this.isSharing = false;
         this.status = 'idle';
         this.stream = null;
         opts.onSessionEnd?.(reason);
         opts.config?.onSessionEnd?.(reason);
         if (reason === 'remote_disconnect') {
-          showToast('Druhá strana ukončila spojení', 'warning');
+          showToast('The other side ended the connection', 'warning');
         } else if (reason === 'error') {
-          showToast('Spojení bylo neočekávaně přerušeno', 'error');
+          showToast('Connection was unexpectedly interrupted', 'error');
         }
         this._closeOverlay();
       },
@@ -86,7 +86,7 @@ export class ScreenShareModal {
     }
   }
 
-  // Zavření iniciované uživatelem (X, klik mimo) — stream zůstane pokud sdílíme
+  // User-initiated close (X button, click outside) — stream is kept alive if sharing
   close(): void {
     this._closeOverlay();
     if (!this.isSharing) {
@@ -95,7 +95,7 @@ export class ScreenShareModal {
     }
   }
 
-  // Interní zavření overlaye bez vedlejších efektů na stream
+  // Internal overlay close with no side effects on the stream
   private _closeOverlay(): void {
     this.overlay?.remove();
     this.overlay = null;
@@ -124,7 +124,7 @@ export class ScreenShareModal {
       });
 
       this.refreshPreview();
-      this.updateConnectBtn(); // stream je teď dostupný — zkontroluj tlačítko
+      this.updateConnectBtn(); // stream is now available — re-evaluate button state
       return s;
     } catch (err: unknown) {
       const e = err as { code?: string };
@@ -152,17 +152,17 @@ export class ScreenShareModal {
       <div class="sssdk-header">
         <div class="sssdk-title">
           <div class="sssdk-title-dot" id="sssdk-dot"></div>
-          <span id="sssdk-title-text">Sdílet obrazovku</span>
+          <span id="sssdk-title-text">Share screen</span>
         </div>
         <button class="sssdk-close" id="sssdk-close-btn">✕</button>
       </div>
       <div class="sssdk-preview" id="sssdk-preview">
         <div class="sssdk-preview-placeholder">
           ${MONITOR_ICON_LG}
-          <span>${isPreferCurrentTab ? 'Čekám na povolení sdílení…' : 'Klikněte na "Vybrat obrazovku"'}</span>
+          <span>${isPreferCurrentTab ? 'Waiting for sharing permission…' : 'Click "Select screen" to continue'}</span>
         </div>
       </div>
-      <div class="sssdk-section-label">Kód agenta</div>
+      <div class="sssdk-section-label">Agent code</div>
       <div class="sssdk-code-input-wrapper" id="sssdk-digits">
         ${Array.from({length: 6}, (_, i) =>
           `<input class="sssdk-code-digit${this.lastCode[i] ? ' filled' : ''}"
@@ -176,7 +176,7 @@ export class ScreenShareModal {
           ? `<button class="sssdk-btn sssdk-btn-secondary" id="sssdk-select-btn">${SCREEN_ICON_SM} Vybrat obrazovku</button>`
           : ''}
         <button class="sssdk-btn sssdk-btn-primary" id="sssdk-connect-btn" disabled
-          ${isPreferCurrentTab ? 'style="flex:1"' : ''}>Připojit</button>
+          ${isPreferCurrentTab ? 'style="flex:1"' : ''}>Connect</button>
       </div>`;
 
     overlay.appendChild(modal);
@@ -185,8 +185,8 @@ export class ScreenShareModal {
 
     this.bindSetupEvents();
 
-    // Bug fix: předvyplněný kód se nenačte přes input eventy —
-    // musíme zkontrolovat tlačítko přímo po renderu
+    // Pre-filled code doesn't trigger input events —
+    // check button state directly after render
     this.updateConnectBtn();
   }
 
@@ -240,7 +240,7 @@ export class ScreenShareModal {
       <div class="sssdk-header">
         <div class="sssdk-title">
           <div class="sssdk-title-dot sharing"></div>
-          Sdílení aktivní
+          Sharing active
         </div>
         <button class="sssdk-close" id="sssdk-close-btn">✕</button>
       </div>
@@ -250,14 +250,14 @@ export class ScreenShareModal {
       <div class="sssdk-sharing-status">
         <div class="sssdk-sharing-info">
           <span class="sssdk-sharing-live">LIVE</span>
-          <span class="sssdk-sharing-text">Obrazovka se sdílí</span>
+          <span class="sssdk-sharing-text">Screen is being shared</span>
         </div>
         <div style="display:flex;gap:8px">
           <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-switch-btn"
             style="flex:0;padding:0 14px;height:36px;font-size:13px">
-            ${SCREEN_ICON_SM} Přepnout
+            ${SCREEN_ICON_SM} Switch
           </button>
-          <button class="sssdk-btn sssdk-btn-stop" id="sssdk-stop-btn">Zastavit</button>
+          <button class="sssdk-btn sssdk-btn-stop" id="sssdk-stop-btn">Stop</button>
         </div>
       </div>`;
 
@@ -301,16 +301,16 @@ export class ScreenShareModal {
       preview.innerHTML = `
         <div class="sssdk-preview-placeholder">
           ${ERROR_ICON}
-          <span style="color:#ef4444;font-size:13px">Přístup ke sdílení byl zamítnut</span>
+          <span style="color:#ef4444;font-size:13px">Screen sharing permission was denied</span>
           <span class="sssdk-permission-hint">
-            Kliknutím níže zkuste znovu nebo povolte sdílení v nastavení stránky.
+            Click below to try again or allow sharing in the site settings.
           </span>
         </div>`;
       const actions = document.getElementById('sssdk-actions');
       if (actions) {
         actions.innerHTML = `
           <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-retry-btn">${REFRESH_ICON} Zkusit znovu</button>
-          <button class="sssdk-btn sssdk-btn-primary" id="sssdk-connect-btn" disabled>Připojit</button>`;
+          <button class="sssdk-btn sssdk-btn-primary" id="sssdk-connect-btn" disabled>Connect</button>`;
         document.getElementById('sssdk-retry-btn')?.addEventListener('click', () => this.doRequestScreen());
         document.getElementById('sssdk-connect-btn')?.addEventListener('click', () => this.doConnect());
       }
@@ -319,7 +319,7 @@ export class ScreenShareModal {
       preview.innerHTML = `
         <div class="sssdk-preview-placeholder">
           ${MONITOR_ICON_LG}
-          <span>${mode === 'preferCurrentTab' ? 'Čekám na povolení sdílení…' : 'Klikněte na "Vybrat obrazovku"'}</span>
+          <span>${mode === 'preferCurrentTab' ? 'Waiting for sharing permission…' : 'Click "Select screen" to continue'}</span>
         </div>`;
     }
   }
@@ -338,7 +338,7 @@ export class ScreenShareModal {
       this.showWaitingForP2P();
     } catch (err: unknown) {
       const e = err as { message?: string };
-      this.showError(e.message ?? 'Nepodařilo se připojit');
+      this.showError(e.message ?? 'Failed to connect');
       this.resetConnectBtn();
     }
   }
@@ -350,7 +350,7 @@ export class ScreenShareModal {
     this.stream = null;
     this.isSharing = false;
     this.status = 'idle';
-    // Notifikuj button-vanilla přímo — NEvoláme přes session-manager aby se zabránilo double-call
+    // Notify button-vanilla directly — do NOT go through session-manager to avoid double-call
     this.opts.onSessionEnd?.('user_stopped');
     this._closeOverlay();
   }
@@ -369,7 +369,7 @@ export class ScreenShareModal {
         this._closeOverlay();
       });
     } catch {
-      // uživatel zrušil picker
+      // user cancelled the picker
     }
   }
 
@@ -393,8 +393,8 @@ export class ScreenShareModal {
     return this.getDigits().map(d => d.value).join('');
   }
 
-  // Bug fix: čte přímo z DOM inputů, ne z cached hodnoty
-  // Předvyplněný kód (value attr) je v DOM hned po renderu — funguje správně
+  // Reads directly from DOM inputs, not a cached value
+  // Pre-filled code (value attr) is in the DOM immediately after render — works correctly
   private updateConnectBtn(): void {
     const btn = document.getElementById('sssdk-connect-btn') as HTMLButtonElement | null;
     if (!btn) return;
@@ -407,28 +407,28 @@ export class ScreenShareModal {
     if (!btn) return;
     btn.disabled = true;
     btn.classList.add('connecting');
-    btn.innerHTML = `<div class="sssdk-spinner"></div> Připojuji…`;
+    btn.innerHTML = `<div class="sssdk-spinner"></div> Connecting…`;
     const t = document.getElementById('sssdk-title-text');
-    if (t) t.textContent = 'Připojuji…';
+    if (t) t.textContent = 'Connecting…';
   }
 
   private showWaitingForP2P(): void {
     const btn = document.getElementById('sssdk-connect-btn') as HTMLButtonElement | null;
     if (btn) {
-      btn.innerHTML = `<div class="sssdk-spinner"></div> Navazuji P2P spojení…`;
+      btn.innerHTML = `<div class="sssdk-spinner"></div> Establishing P2P connection…`;
     }
     const t = document.getElementById('sssdk-title-text');
-    if (t) t.textContent = 'Navazuji P2P spojení…';
+    if (t) t.textContent = 'Establishing P2P connection…';
   }
 
   private resetConnectBtn(): void {
     const btn = document.getElementById('sssdk-connect-btn') as HTMLButtonElement | null;
     if (!btn) return;
     btn.classList.remove('connecting');
-    btn.innerHTML = 'Připojit';
+    btn.innerHTML = 'Connect';
     this.updateConnectBtn();
     const t = document.getElementById('sssdk-title-text');
-    if (t) t.textContent = 'Sdílet obrazovku';
+    if (t) t.textContent = 'Share screen';
   }
 
   private showError(msg: string): void {
