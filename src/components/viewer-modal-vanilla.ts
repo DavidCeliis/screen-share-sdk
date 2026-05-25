@@ -3,6 +3,7 @@ import { applyTheme } from "../styles/theme";
 import type { ThemeMode } from "../styles/theme";
 import { ScreenViewSessionManager } from "../core/viewer-session-manager";
 import type { ViewerConfig, ViewerStatus } from "../core/types";
+import { t, subscribeToLocale } from "../i18n";
 
 export interface ViewerModalOptions {
   config?: ViewerConfig;
@@ -34,6 +35,8 @@ export class ScreenViewModal {
   private stream: MediaStream | null = null;
   private isViewing: boolean = false;
 
+  private _unsubLocale: (() => void) | null = null;
+
   constructor(opts: ViewerModalOptions = {}) {
     injectStyles();
     this.opts = opts;
@@ -56,15 +59,19 @@ export class ScreenViewModal {
         opts.onSessionEnd?.(reason);
         opts.config?.onSessionEnd?.(reason);
         if (reason === 'remote_disconnect') {
-          showToast('The other side ended the connection', 'warning');
+          showToast(t('toast.remoteDisconnect'), 'warning');
         } else if (reason === 'error') {
-          showToast('Connection was unexpectedly interrupted', 'error');
+          showToast(t('toast.unexpectedError'), 'error');
         }
         this._closeOverlay();
       },
     };
 
     this.manager = new ScreenViewSessionManager(config, opts.connection);
+
+    this._unsubLocale = subscribeToLocale(() => {
+      if (this.overlay) this._updateTexts();
+    });
   }
 
   open(): void {
@@ -80,10 +87,78 @@ export class ScreenViewModal {
     this._closeOverlay();
   }
 
+  // Call when the modal instance will never be used again
+  destroy(): void {
+    this._unsubLocale?.();
+    this._unsubLocale = null;
+    this._closeOverlay();
+  }
+
   private _closeOverlay(): void {
     this.overlay?.remove();
     this.overlay = null;
     this.opts.onClose?.();
+  }
+
+  // ─── Live text update (on locale change) ────────────────────────────────
+
+  private _updateTexts(): void {
+    if (!this.overlay) return;
+
+    // Idle view
+    const startBtn = this.overlay.querySelector<HTMLButtonElement>("#sssdk-start-btn");
+    if (startBtn && !startBtn.disabled) startBtn.textContent = t('view.generateCode');
+
+    const clickToStart = this.overlay.querySelector<HTMLElement>(".sssdk-preview-placeholder > span:not([style])");
+    if (clickToStart) clickToStart.textContent = t('view.clickToStart');
+
+    // Waiting view
+    const codeForClientLabel = this.overlay.querySelector<HTMLElement>(".sssdk-section-label");
+    if (codeForClientLabel) codeForClientLabel.textContent = t('view.codeForClient');
+
+    const waitingStatus = this.overlay.querySelector<HTMLElement>(".sssdk-viewer-waiting-status > span");
+    if (waitingStatus) waitingStatus.textContent = t('view.waitingForClient');
+
+    const copyBtn = this.overlay.querySelector<HTMLButtonElement>("#sssdk-copy-btn");
+    if (copyBtn && !copyBtn.textContent?.includes('✓')) {
+      copyBtn.innerHTML = `${COPY_ICON} ${t('view.copyCode')}`;
+    }
+
+    const cancelBtn = this.overlay.querySelector<HTMLButtonElement>("#sssdk-cancel-btn");
+    if (cancelBtn) cancelBtn.textContent = t('view.cancel');
+
+    // Retry / close buttons (error state)
+    const retryBtn = this.overlay.querySelector<HTMLButtonElement>("#sssdk-retry-btn");
+    if (retryBtn) retryBtn.textContent = t('view.tryAgain');
+
+    // Viewing view
+    const badge = this.overlay.querySelector<HTMLElement>(".sssdk-preview-badge");
+    if (badge) badge.textContent = t('view.badgeLive');
+
+    const sharingLive = this.overlay.querySelector<HTMLElement>(".sssdk-sharing-live");
+    if (sharingLive) sharingLive.textContent = t('view.badgeLive');
+
+    const sharingText = this.overlay.querySelector<HTMLElement>(".sssdk-sharing-text");
+    if (sharingText) sharingText.textContent = t('view.viewingScreen');
+
+    const fullscreenBtn = this.overlay.querySelector<HTMLButtonElement>("#sssdk-fullscreen-btn");
+    if (fullscreenBtn) fullscreenBtn.innerHTML = `${FULLSCREEN_ICON} ${t('view.fullscreen')}`;
+
+    const stopBtn = this.overlay.querySelector<HTMLButtonElement>("#sssdk-stop-btn");
+    if (stopBtn) stopBtn.textContent = t('view.stop');
+
+    // P2P connecting span
+    const p2pSpan = this.overlay.querySelector<HTMLElement>("#sssdk-p2p-loading span");
+    if (p2pSpan) p2pSpan.textContent = t('view.p2pConnecting');
+
+    // Title
+    const titleSpan = this.overlay.querySelector<HTMLElement>(".sssdk-title > span");
+    if (titleSpan) {
+      if (this.status === "viewing") titleSpan.textContent = t('view.titleIncoming');
+      else if (this.status === "waiting" || this.status === "connecting") titleSpan.textContent = t('view.titleWaiting');
+      else if (this.status === "registering") titleSpan.textContent = t('view.titleGenerating');
+      else titleSpan.textContent = t('view.titleIdle');
+    }
   }
 
   // ─── Idle view ────────────────────────────────────────────────────────────
@@ -97,19 +172,19 @@ export class ScreenViewModal {
       <div class="sssdk-header">
         <div class="sssdk-title">
           <div class="sssdk-title-dot"></div>
-          <span>Zobrazit obrazovku</span>
+          <span>${t('view.titleIdle')}</span>
         </div>
         <button class="sssdk-close" id="sssdk-close-btn">✕</button>
       </div>
       <div class="sssdk-preview" id="sssdk-preview">
         <div class="sssdk-preview-placeholder">
           ${EYE_ICON_LG}
-          <span>Click the button to start</span>
+          <span>${t('view.clickToStart')}</span>
         </div>
       </div>
       <div class="sssdk-actions" style="margin-top:4px">
         <button class="sssdk-btn sssdk-btn-primary" id="sssdk-start-btn" style="flex:1">
-          Generate code
+          ${t('view.generateCode')}
         </button>
       </div>`;
 
@@ -124,16 +199,17 @@ export class ScreenViewModal {
   // ─── Register + waiting view ──────────────────────────────────────────────
 
   private async doRegister(): Promise<void> {
+    this.status = "registering";
     this.showRegistering();
     try {
       const code = await this.manager.register();
       this.code = code;
-      this.renderWaitingView(code);
       this.status = "waiting";
+      this.renderWaitingView(code);
       await this.doStartViewing(code);
     } catch (err: unknown) {
       const e = err as { message?: string };
-      this.showStartError(e.message ?? "Registrace selhala");
+      this.showStartError(e.message ?? t('view.registrationFailed'));
     }
   }
 
@@ -141,15 +217,18 @@ export class ScreenViewModal {
     const btn = document.getElementById("sssdk-start-btn") as HTMLButtonElement | null;
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = `<div class="sssdk-spinner"></div> Generating code…`;
+      btn.innerHTML = `<div class="sssdk-spinner"></div> ${t('view.titleGenerating')}`;
     }
+    const titleSpan = this.overlay?.querySelector<HTMLElement>(".sssdk-title > span");
+    if (titleSpan) titleSpan.textContent = t('view.titleGenerating');
   }
 
   private showStartError(msg: string): void {
+    this.status = "error";
     const btn = document.getElementById("sssdk-start-btn") as HTMLButtonElement | null;
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "Zkusit znovu";
+      btn.textContent = t('view.tryAgain');
     }
     const preview = document.getElementById("sssdk-preview");
     if (preview) {
@@ -162,6 +241,9 @@ export class ScreenViewModal {
   // ─── Waiting view (code displayed, waiting for client) ────────────────────
 
   private renderWaitingView(code: string): void {
+    const titleSpan = this.overlay?.querySelector<HTMLElement>(".sssdk-title > span");
+    if (titleSpan) titleSpan.textContent = t('view.titleWaiting');
+
     const preview = document.getElementById("sssdk-preview");
     if (preview) {
       const digits = code.split("").map(d =>
@@ -169,25 +251,25 @@ export class ScreenViewModal {
       ).join("");
       preview.innerHTML = `
         <div class="sssdk-viewer-waiting">
-          <div class="sssdk-section-label" style="margin-bottom:14px">Code for the client</div>
+          <div class="sssdk-section-label" style="margin-bottom:14px">${t('view.codeForClient')}</div>
           <div class="sssdk-viewer-code-display" id="sssdk-code-display">
             ${digits}
           </div>
           <button class="sssdk-viewer-copy-btn" id="sssdk-copy-btn">
-            ${COPY_ICON} Copy code
+            ${COPY_ICON} ${t('view.copyCode')}
           </button>
           <div class="sssdk-viewer-waiting-status">
             <div class="sssdk-waiting-dots">
               <span></span><span></span><span></span>
             </div>
-            <span>Waiting for client…</span>
+            <span>${t('view.waitingForClient')}</span>
           </div>
         </div>`;
     }
 
     const actions = document.querySelector<HTMLElement>(".sssdk-actions");
     if (actions) {
-      actions.innerHTML = `<button class="sssdk-btn sssdk-btn-secondary" id="sssdk-cancel-btn" style="flex:1">Cancel</button>`;
+      actions.innerHTML = `<button class="sssdk-btn sssdk-btn-secondary" id="sssdk-cancel-btn" style="flex:1">${t('view.cancel')}</button>`;
       document.getElementById("sssdk-cancel-btn")?.addEventListener("click", () => {
         this.manager.endSession("user_stopped");
         this.status = "idle";
@@ -200,9 +282,9 @@ export class ScreenViewModal {
       navigator.clipboard.writeText(code).catch(() => {});
       const btn = document.getElementById("sssdk-copy-btn");
       if (btn) {
-        btn.textContent = "✓ Copied";
+        btn.textContent = t('view.copied');
         setTimeout(() => {
-          if (btn) btn.innerHTML = `${COPY_ICON} Copy code`;
+          if (btn) btn.innerHTML = `${COPY_ICON} ${t('view.copyCode')}`;
         }, 2000);
       }
     });
@@ -217,7 +299,7 @@ export class ScreenViewModal {
       if (!this.overlay) return; // user cancelled
       const e = err as { message?: string };
       this.status = "error";
-      this.showWaitingError(e.message ?? "Failed to connect");
+      this.showWaitingError(e.message ?? t('view.failedToConnect'));
     }
   }
 
@@ -231,8 +313,8 @@ export class ScreenViewModal {
     const actions = document.querySelector<HTMLElement>(".sssdk-actions");
     if (actions) {
       actions.innerHTML = `
-        <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-cancel-btn" style="flex:1">Close</button>
-        <button class="sssdk-btn sssdk-btn-primary" id="sssdk-retry-btn" style="flex:1">Zkusit znovu</button>`;
+        <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-cancel-btn" style="flex:1">${t('view.close')}</button>
+        <button class="sssdk-btn sssdk-btn-primary" id="sssdk-retry-btn" style="flex:1">${t('view.tryAgain')}</button>`;
       document.getElementById("sssdk-cancel-btn")?.addEventListener("click", () => this.close());
       document.getElementById("sssdk-retry-btn")?.addEventListener("click", () => {
         this.status = "idle";
@@ -265,27 +347,27 @@ export class ScreenViewModal {
       <div class="sssdk-header">
         <div class="sssdk-title">
           <div class="sssdk-title-dot sharing"></div>
-          <span>Incoming screen</span>
+          <span>${t('view.titleIncoming')}</span>
         </div>
         <button class="sssdk-close" id="sssdk-close-btn">✕</button>
       </div>
       <div class="sssdk-preview" id="sssdk-preview">
         <div class="sssdk-preview-placeholder" id="sssdk-p2p-loading" style="position:absolute;inset:0;background:transparent">
           <div class="sssdk-spinner" style="width:28px;height:28px;border-width:3px"></div>
-          <span style="font-size:13px">Establishing P2P connection…</span>
+          <span style="font-size:13px">${t('view.p2pConnecting')}</span>
         </div>
       </div>
       <div class="sssdk-sharing-status">
         <div class="sssdk-sharing-info">
-          <span class="sssdk-sharing-live">LIVE</span>
-          <span class="sssdk-sharing-text">Viewing client's screen</span>
+          <span class="sssdk-sharing-live">${t('view.badgeLive')}</span>
+          <span class="sssdk-sharing-text">${t('view.viewingScreen')}</span>
         </div>
         <div style="display:flex;gap:8px">
           <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-fullscreen-btn"
             style="flex:0;padding:0 14px;height:36px;font-size:13px">
-            ${FULLSCREEN_ICON} Fullscreen
+            ${FULLSCREEN_ICON} ${t('view.fullscreen')}
           </button>
-          <button class="sssdk-btn sssdk-btn-stop" id="sssdk-stop-btn">Stop</button>
+          <button class="sssdk-btn sssdk-btn-stop" id="sssdk-stop-btn">${t('view.stop')}</button>
         </div>
       </div>`;
 
@@ -301,7 +383,7 @@ export class ScreenViewModal {
         preview.querySelector<HTMLElement>(".sssdk-preview-badge")?.remove();
         const badge = document.createElement("div");
         badge.className = "sssdk-preview-badge";
-        badge.textContent = "LIVE";
+        badge.textContent = t('view.badgeLive');
         preview.appendChild(badge);
       }, { once: true });
       preview.insertBefore(video, preview.firstChild);
@@ -318,7 +400,7 @@ export class ScreenViewModal {
   // ─── Stop ─────────────────────────────────────────────────────────────────
 
   private handleStop(): void {
-    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
     this.isViewing = false;
     this.status = "idle";

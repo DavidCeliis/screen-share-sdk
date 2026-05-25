@@ -2,6 +2,8 @@
 // Exposes a global window.ScreenShareSDK object.
 // React is intentionally excluded — vanilla JS API only.
 
+export { setLocale, getResolvedLocale, t } from './i18n';
+
 export { createScreenShareButton } from './components/button-vanilla';
 export { ScreenShareModal } from './components/modal-vanilla';
 export { ScreenShareSessionManager, detectCurrentTabSupport } from './core/session-manager';

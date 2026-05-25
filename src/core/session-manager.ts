@@ -1,4 +1,5 @@
 import { createAdapter, SignalRAdapter } from "../adapters/signalr-adapter";
+import { t } from "../i18n";
 import type {
   ScreenShareConfig,
   ScreenShareSession,
@@ -80,6 +81,7 @@ export class ScreenShareSessionManager {
   private config: ScreenShareConfig;
   private adapter: SignalRAdapter | null = null;
   private peerConnection: RTCPeerConnection | null = null;
+  private dataChannel: RTCDataChannel | null = null;
   private currentSession: ScreenShareSession | null = null;
   private existingConnection: unknown;
   private pendingCandidates: RTCIceCandidateInit[] = [];
@@ -104,10 +106,7 @@ export class ScreenShareSessionManager {
     const support = detectCurrentTabSupport();
 
     if (support === "unsupported") {
-      alert(
-        "Your browser does not support screen sharing.\n\n" +
-          "Please use Chrome, Edge, or Firefox (current version) on a desktop device.",
-      );
+      alert(t('alert.unsupportedBrowser'));
       throw this.makeError(
         "UNSUPPORTED",
         "getDisplayMedia is not supported in this browser",
@@ -224,6 +223,8 @@ export class ScreenShareSessionManager {
       iceServers: this.config.iceServers ?? [{ urls: "stun:stun.l.google.com:19302" }],
     });
 
+    this.dataChannel = this.peerConnection.createDataChannel("code", { ordered: true });
+
     this.peerConnection.onconnectionstatechange = () => {
       if (!this.peerConnection) return;
       const state = this.peerConnection.connectionState;
@@ -276,6 +277,14 @@ export class ScreenShareSessionManager {
     await this.adapter!.sendOffer(sessionId, offer);
   }
 
+  pasteCode(code: string): void {
+    if (this.config.testMode) return;
+    if (!this.dataChannel || this.dataChannel.readyState !== "open") {
+      throw this.makeError("STREAM_ERROR", "Data channel is not open — session may not be fully connected yet");
+    }
+    this.dataChannel.send(code);
+  }
+
   async replaceVideoTrack(newTrack: MediaStreamTrack): Promise<void> {
     if (this.config.testMode) return;
     if (!this.peerConnection) {
@@ -297,6 +306,8 @@ export class ScreenShareSessionManager {
 
     const sessionCode = this.currentSession.sessionId;
     this.currentSession.stream?.getTracks().forEach((t) => t.stop());
+    this.dataChannel?.close();
+    this.dataChannel = null;
     this.peerConnection?.close();
     this.peerConnection = null;
     this.pendingCandidates = [];

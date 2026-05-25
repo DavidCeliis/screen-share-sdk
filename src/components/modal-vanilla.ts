@@ -5,6 +5,7 @@ import { applyTheme } from '../styles/theme';
 import type { ThemeMode } from '../styles/theme';
 import { ScreenShareSessionManager } from '../core/session-manager';
 import type { ScreenShareConfig, ScreenShareStatus } from '../core/types';
+import { t, subscribeToLocale } from '../i18n';
 
 export interface VanillaModalOptions {
   config?: ScreenShareConfig;
@@ -38,6 +39,10 @@ export class ScreenShareModal {
   private lastCode: string = '';
   private permissionDenied: boolean = false;
   private isSharing: boolean = false;
+  // Tracks which title is currently displayed in the setup view
+  private _titleState: 'setup' | 'connecting' | 'p2p' = 'setup';
+
+  private _unsubLocale: (() => void) | null = null;
 
   constructor(opts: VanillaModalOptions = {}) {
     injectStyles();
@@ -63,15 +68,19 @@ export class ScreenShareModal {
         opts.onSessionEnd?.(reason);
         opts.config?.onSessionEnd?.(reason);
         if (reason === 'remote_disconnect') {
-          showToast('The other side ended the connection', 'warning');
+          showToast(t('toast.remoteDisconnect'), 'warning');
         } else if (reason === 'error') {
-          showToast('Connection was unexpectedly interrupted', 'error');
+          showToast(t('toast.unexpectedError'), 'error');
         }
         this._closeOverlay();
       },
     };
 
     this.manager = new ScreenShareSessionManager(config, opts.connection);
+
+    this._unsubLocale = subscribeToLocale(() => {
+      if (this.overlay) this._updateTexts();
+    });
   }
 
   open(): void {
@@ -86,13 +95,24 @@ export class ScreenShareModal {
     }
   }
 
+  pasteCode(code: string): void {
+    this.manager.pasteCode(code);
+  }
+
   // User-initiated close (X button, click outside) — stream is kept alive if sharing
   close(): void {
     this._closeOverlay();
     if (!this.isSharing) {
-      this.stream?.getTracks().forEach(t => t.stop());
+      this.stream?.getTracks().forEach(track => track.stop());
       this.stream = null;
     }
+  }
+
+  // Call when the modal instance will never be used again
+  destroy(): void {
+    this._unsubLocale?.();
+    this._unsubLocale = null;
+    this._closeOverlay();
   }
 
   // Internal overlay close with no side effects on the stream
@@ -100,6 +120,78 @@ export class ScreenShareModal {
     this.overlay?.remove();
     this.overlay = null;
     this.opts.onClose?.();
+  }
+
+  // ─── Live text update (on locale change) ────────────────────────────────
+
+  private _updateTexts(): void {
+    if (!this.overlay) return;
+
+    // Setup / connecting view title
+    const titleEl = this.overlay.querySelector<HTMLElement>('#sssdk-title-text');
+    if (titleEl) {
+      if (this._titleState === 'connecting') titleEl.textContent = t('share.titleConnecting');
+      else if (this._titleState === 'p2p') titleEl.textContent = t('share.titleP2P');
+      else titleEl.textContent = t('share.titleSetup');
+    }
+
+    // Agent code label
+    const agentLabel = this.overlay.querySelector<HTMLElement>('.sssdk-section-label');
+    if (agentLabel) agentLabel.textContent = t('share.agentCode');
+
+    // Select screen button
+    const selectBtn = this.overlay.querySelector<HTMLButtonElement>('#sssdk-select-btn');
+    if (selectBtn) selectBtn.innerHTML = `${SCREEN_ICON_SM} ${t('share.selectScreen')}`;
+
+    // Connect button (only if not mid-connection)
+    const connectBtn = this.overlay.querySelector<HTMLButtonElement>('#sssdk-connect-btn');
+    if (connectBtn && !connectBtn.classList.contains('connecting')) {
+      connectBtn.textContent = t('share.connect');
+    } else if (connectBtn) {
+      if (this._titleState === 'connecting') {
+        connectBtn.innerHTML = `<div class="sssdk-spinner"></div> ${t('share.titleConnecting')}`;
+      } else if (this._titleState === 'p2p') {
+        connectBtn.innerHTML = `<div class="sssdk-spinner"></div> ${t('share.titleP2P')}`;
+      }
+    }
+
+    // Retry button
+    const retryBtn = this.overlay.querySelector<HTMLButtonElement>('#sssdk-retry-btn');
+    if (retryBtn) retryBtn.innerHTML = `${REFRESH_ICON} ${t('share.tryAgain')}`;
+
+    // Preview badge
+    const badge = this.overlay.querySelector<HTMLElement>('.sssdk-preview-badge');
+    if (badge) badge.textContent = this.isSharing ? t('share.badgeLive') : t('share.badgePreview');
+
+    // Sharing view static elements
+    const sharingLive = this.overlay.querySelector<HTMLElement>('.sssdk-sharing-live');
+    if (sharingLive) sharingLive.textContent = t('share.badgeLive');
+
+    const sharingText = this.overlay.querySelector<HTMLElement>('.sssdk-sharing-text');
+    if (sharingText) sharingText.textContent = t('share.screenBeingShared');
+
+    const switchBtn = this.overlay.querySelector<HTMLButtonElement>('#sssdk-switch-btn');
+    if (switchBtn) switchBtn.innerHTML = `${SCREEN_ICON_SM} ${t('share.switch')}`;
+
+    const stopBtn = this.overlay.querySelector<HTMLButtonElement>('#sssdk-stop-btn');
+    if (stopBtn) stopBtn.textContent = t('share.stop');
+
+    // Preview placeholder span (idle/waiting state, no stream, no error)
+    if (!this.stream && !this.permissionDenied) {
+      const placeholderSpan = this.overlay.querySelector<HTMLElement>('.sssdk-preview-placeholder > span');
+      if (placeholderSpan) {
+        const isPreferCurrentTab = this.manager.getEffectiveMode() === 'preferCurrentTab';
+        placeholderSpan.textContent = isPreferCurrentTab
+          ? t('share.waitingPermission')
+          : t('share.clickToSelect');
+      }
+    }
+
+    // Permission denied message
+    if (this.permissionDenied) {
+      const permEl = this.overlay.querySelector<HTMLElement>('#sssdk-perm-denied-msg');
+      if (permEl) permEl.textContent = t('share.permDenied');
+    }
   }
 
   // ─── Request screen ──────────────────────────────────────────────────────
@@ -142,6 +234,7 @@ export class ScreenShareModal {
   // ─── Setup view ──────────────────────────────────────────────────────────
 
   private renderSetupView(): void {
+    this._titleState = 'setup';
     const overlay = this.createOverlay();
     const modal = document.createElement('div');
     modal.className = 'sssdk-modal';
@@ -152,17 +245,17 @@ export class ScreenShareModal {
       <div class="sssdk-header">
         <div class="sssdk-title">
           <div class="sssdk-title-dot" id="sssdk-dot"></div>
-          <span id="sssdk-title-text">Share screen</span>
+          <span id="sssdk-title-text">${t('share.titleSetup')}</span>
         </div>
         <button class="sssdk-close" id="sssdk-close-btn">✕</button>
       </div>
       <div class="sssdk-preview" id="sssdk-preview">
         <div class="sssdk-preview-placeholder">
           ${MONITOR_ICON_LG}
-          <span>${isPreferCurrentTab ? 'Waiting for sharing permission…' : 'Click "Select screen" to continue'}</span>
+          <span>${isPreferCurrentTab ? t('share.waitingPermission') : t('share.clickToSelect')}</span>
         </div>
       </div>
-      <div class="sssdk-section-label">Agent code</div>
+      <div class="sssdk-section-label">${t('share.agentCode')}</div>
       <div class="sssdk-code-input-wrapper" id="sssdk-digits">
         ${Array.from({length: 6}, (_, i) =>
           `<input class="sssdk-code-digit${this.lastCode[i] ? ' filled' : ''}"
@@ -173,10 +266,10 @@ export class ScreenShareModal {
       <div class="sssdk-error-msg" id="sssdk-error"></div>
       <div class="sssdk-actions" id="sssdk-actions">
         ${!isPreferCurrentTab
-          ? `<button class="sssdk-btn sssdk-btn-secondary" id="sssdk-select-btn">${SCREEN_ICON_SM} Vybrat obrazovku</button>`
+          ? `<button class="sssdk-btn sssdk-btn-secondary" id="sssdk-select-btn">${SCREEN_ICON_SM} ${t('share.selectScreen')}</button>`
           : ''}
         <button class="sssdk-btn sssdk-btn-primary" id="sssdk-connect-btn" disabled
-          ${isPreferCurrentTab ? 'style="flex:1"' : ''}>Connect</button>
+          ${isPreferCurrentTab ? 'style="flex:1"' : ''}>${t('share.connect')}</button>
       </div>`;
 
     overlay.appendChild(modal);
@@ -240,24 +333,24 @@ export class ScreenShareModal {
       <div class="sssdk-header">
         <div class="sssdk-title">
           <div class="sssdk-title-dot sharing"></div>
-          Sharing active
+          ${t('share.titleSharing')}
         </div>
         <button class="sssdk-close" id="sssdk-close-btn">✕</button>
       </div>
       <div class="sssdk-preview" id="sssdk-preview">
-        <div class="sssdk-preview-badge">LIVE</div>
+        <div class="sssdk-preview-badge">${t('share.badgeLive')}</div>
       </div>
       <div class="sssdk-sharing-status">
         <div class="sssdk-sharing-info">
-          <span class="sssdk-sharing-live">LIVE</span>
-          <span class="sssdk-sharing-text">Screen is being shared</span>
+          <span class="sssdk-sharing-live">${t('share.badgeLive')}</span>
+          <span class="sssdk-sharing-text">${t('share.screenBeingShared')}</span>
         </div>
         <div style="display:flex;gap:8px">
           <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-switch-btn"
             style="flex:0;padding:0 14px;height:36px;font-size:13px">
-            ${SCREEN_ICON_SM} Switch
+            ${SCREEN_ICON_SM} ${t('share.switch')}
           </button>
-          <button class="sssdk-btn sssdk-btn-stop" id="sssdk-stop-btn">Stop</button>
+          <button class="sssdk-btn sssdk-btn-stop" id="sssdk-stop-btn">${t('share.stop')}</button>
         </div>
       </div>`;
 
@@ -294,14 +387,14 @@ export class ScreenShareModal {
       preview.appendChild(video);
       const badge = document.createElement('div');
       badge.className = 'sssdk-preview-badge';
-      badge.textContent = 'PREVIEW';
+      badge.textContent = t('share.badgePreview');
       preview.appendChild(badge);
 
     } else if (this.permissionDenied) {
       preview.innerHTML = `
         <div class="sssdk-preview-placeholder">
           ${ERROR_ICON}
-          <span style="color:#ef4444;font-size:13px">Screen sharing permission was denied</span>
+          <span id="sssdk-perm-denied-msg" style="color:#ef4444;font-size:13px">${t('share.permDenied')}</span>
           <span class="sssdk-permission-hint">
             Click below to try again or allow sharing in the site settings.
           </span>
@@ -309,8 +402,8 @@ export class ScreenShareModal {
       const actions = document.getElementById('sssdk-actions');
       if (actions) {
         actions.innerHTML = `
-          <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-retry-btn">${REFRESH_ICON} Zkusit znovu</button>
-          <button class="sssdk-btn sssdk-btn-primary" id="sssdk-connect-btn" disabled>Connect</button>`;
+          <button class="sssdk-btn sssdk-btn-secondary" id="sssdk-retry-btn">${REFRESH_ICON} ${t('share.tryAgain')}</button>
+          <button class="sssdk-btn sssdk-btn-primary" id="sssdk-connect-btn" disabled>${t('share.connect')}</button>`;
         document.getElementById('sssdk-retry-btn')?.addEventListener('click', () => this.doRequestScreen());
         document.getElementById('sssdk-connect-btn')?.addEventListener('click', () => this.doConnect());
       }
@@ -319,7 +412,7 @@ export class ScreenShareModal {
       preview.innerHTML = `
         <div class="sssdk-preview-placeholder">
           ${MONITOR_ICON_LG}
-          <span>${mode === 'preferCurrentTab' ? 'Waiting for sharing permission…' : 'Click "Select screen" to continue'}</span>
+          <span>${mode === 'preferCurrentTab' ? t('share.waitingPermission') : t('share.clickToSelect')}</span>
         </div>`;
     }
   }
@@ -338,7 +431,7 @@ export class ScreenShareModal {
       this.showWaitingForP2P();
     } catch (err: unknown) {
       const e = err as { message?: string };
-      this.showError(e.message ?? 'Failed to connect');
+      this.showError(e.message ?? t('view.failedToConnect'));
       this.resetConnectBtn();
     }
   }
@@ -346,7 +439,7 @@ export class ScreenShareModal {
   // ─── Stop / switch ────────────────────────────────────────────────────────
 
   private handleStop(): void {
-    this.stream?.getTracks().forEach(t => t.stop());
+    this.stream?.getTracks().forEach(track => track.stop());
     this.stream = null;
     this.isSharing = false;
     this.status = 'idle';
@@ -359,7 +452,7 @@ export class ScreenShareModal {
     try {
       const newStream = await this.manager.requestScreen();
       await this.manager.replaceVideoTrack(newStream.getVideoTracks()[0]);
-      this.stream?.getTracks().forEach(t => t.stop());
+      this.stream?.getTracks().forEach(track => track.stop());
       this.stream = newStream;
       const video = document.querySelector<HTMLVideoElement>('#sssdk-preview video');
       if (video) video.srcObject = newStream;
@@ -403,32 +496,33 @@ export class ScreenShareModal {
   }
 
   private showConnecting(): void {
+    this._titleState = 'connecting';
     const btn = document.getElementById('sssdk-connect-btn') as HTMLButtonElement | null;
     if (!btn) return;
     btn.disabled = true;
     btn.classList.add('connecting');
-    btn.innerHTML = `<div class="sssdk-spinner"></div> Connecting…`;
-    const t = document.getElementById('sssdk-title-text');
-    if (t) t.textContent = 'Connecting…';
+    btn.innerHTML = `<div class="sssdk-spinner"></div> ${t('share.titleConnecting')}`;
+    const titleEl = document.getElementById('sssdk-title-text');
+    if (titleEl) titleEl.textContent = t('share.titleConnecting');
   }
 
   private showWaitingForP2P(): void {
+    this._titleState = 'p2p';
     const btn = document.getElementById('sssdk-connect-btn') as HTMLButtonElement | null;
-    if (btn) {
-      btn.innerHTML = `<div class="sssdk-spinner"></div> Establishing P2P connection…`;
-    }
-    const t = document.getElementById('sssdk-title-text');
-    if (t) t.textContent = 'Establishing P2P connection…';
+    if (btn) btn.innerHTML = `<div class="sssdk-spinner"></div> ${t('share.titleP2P')}`;
+    const titleEl = document.getElementById('sssdk-title-text');
+    if (titleEl) titleEl.textContent = t('share.titleP2P');
   }
 
   private resetConnectBtn(): void {
+    this._titleState = 'setup';
     const btn = document.getElementById('sssdk-connect-btn') as HTMLButtonElement | null;
     if (!btn) return;
     btn.classList.remove('connecting');
-    btn.innerHTML = 'Connect';
+    btn.textContent = t('share.connect');
     this.updateConnectBtn();
-    const t = document.getElementById('sssdk-title-text');
-    if (t) t.textContent = 'Share screen';
+    const titleEl = document.getElementById('sssdk-title-text');
+    if (titleEl) titleEl.textContent = t('share.titleSetup');
   }
 
   private showError(msg: string): void {

@@ -102,6 +102,15 @@ export class ScreenViewSessionManager {
       }
     };
 
+    this.peerConnection.ondatachannel = (event) => {
+      const channel = event.channel;
+      channel.onmessage = (e: MessageEvent) => {
+        if (typeof e.data === "string") {
+          this.config.onCodeReceived?.(e.data);
+        }
+      };
+    };
+
     const pendingCandidates: RTCIceCandidateInit[] = [];
     let remoteDescSet = false;
 

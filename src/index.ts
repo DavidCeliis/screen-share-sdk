@@ -1,5 +1,10 @@
 // Public API of screen-share-sdk
 
+// ─── i18n ──────────────────────────────────────────────────────────
+export { setLocale, subscribeToLocale, getResolvedLocale, t } from "./i18n";
+export type { Locale, ResolvedLocale, TranslationKey } from "./i18n";
+export { useLocale } from "./components/use-locale";
+
 // ─── Theme ─────────────────────────────────────────────────────────
 export { setThemeMode } from "./styles/theme";
 export type { ThemeMode, ResolvedTheme } from "./styles/theme";

@@ -354,18 +354,24 @@ Viewer-side equivalent of `ScreenShareButton` — generates a code, waits for a 
 For custom UI — gives full control over state.
 
 ```tsx
-const { state, requestScreen, startSession, stopSession } = useScreenShare(config);
+const { state, requestScreen, startSession, stopSession, pasteCode } = useScreenShare(config);
 
 // state.status: 'idle' | 'requesting_screen' | 'preview' | 'connecting' | 'sharing' | 'error'
 // state.stream: MediaStream | null
 // state.session: ScreenShareSession | null
 // state.error: ScreenShareError | null
+
+// Send a code snippet to the viewer (session must be active)
+pasteCode('const x = 42;');
 ```
 
 ### `useScreenView(config?, connection?)` (React hook)
 
 ```tsx
-const { state, register, startViewing, stopViewing } = useScreenView(config);
+const { state, register, startViewing, stopViewing } = useScreenView({
+  ...config,
+  onCodeReceived: (code) => console.log('received:', code),
+});
 
 // state.status: 'idle' | 'registering' | 'waiting' | 'connecting' | 'viewing' | 'error'
 // state.code: string | null
@@ -439,6 +445,9 @@ const session = await manager.startSession(stream, '123456');
 const newStream = await manager.requestScreen();
 await manager.replaceVideoTrack(newStream.getVideoTracks()[0]);
 
+// Send a code snippet to the viewer (session must be active)
+manager.pasteCode('const x = 42;');
+
 // Stop
 session.stop();
 ```
@@ -459,6 +468,80 @@ if (support === 'unsupported') {
   // hide the share button entirely
 }
 ```
+
+---
+
+## Code paste / copy
+
+The SDK includes a built-in side-channel for sending code snippets from the **sender** to the **viewer** over the same WebRTC connection (via a DataChannel). Useful when the SDK is embedded in a chat app and you want to automatically deliver a code block when a message is received.
+
+**Sender** calls `pasteCode(text)` — **viewer** receives it via `onCodeReceived`.
+
+### React
+
+```tsx
+// Sender side
+function SenderApp() {
+  const { state, requestScreen, startSession, pasteCode } = useScreenShare({
+    hubUrl: '/hubs/screenshare',
+  });
+
+  // Called when a chat message with code arrives
+  function onChatMessage(message) {
+    if (message.code && state.status === 'sharing') {
+      pasteCode(message.code);
+    }
+  }
+
+  return <button onClick={requestScreen}>Share screen</button>;
+}
+
+// Viewer side
+function ViewerApp() {
+  const [receivedCode, setReceivedCode] = useState('');
+
+  const { state, register, startViewing } = useScreenView({
+    hubUrl: '/hubs/screenshare',
+    onCodeReceived: (code) => {
+      setReceivedCode(code);
+      navigator.clipboard.writeText(code); // or display it directly
+    },
+  });
+
+  return <div>{receivedCode && <pre>{receivedCode}</pre>}</div>;
+}
+```
+
+### Vanilla JS / direct session manager
+
+```js
+// Sender side
+import { ScreenShareSessionManager } from 'screen-share-sdk';
+
+const manager = new ScreenShareSessionManager({ hubUrl: '/hubs/screenshare' });
+const stream = await manager.requestScreen();
+await manager.startSession(stream, sessionCode);
+
+// Send code at any time while the session is active
+manager.pasteCode('const x = 42;');
+
+// Viewer side
+import { ScreenViewSessionManager } from 'screen-share-sdk';
+
+const viewer = new ScreenViewSessionManager({
+  hubUrl: '/hubs/screenshare',
+  onCodeReceived: (code) => {
+    document.getElementById('code-output').textContent = code;
+    navigator.clipboard.writeText(code);
+  },
+});
+
+const code = await viewer.register();
+await viewer.startViewing(code);
+```
+
+> `pasteCode` throws if the session is not yet fully connected. Call it only after `onSessionStart` has fired.
+> `onCodeReceived` fires every time the sender calls `pasteCode` — it can be called multiple times during a session.
 
 ---
 

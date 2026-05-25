@@ -4,6 +4,7 @@ import { injectStyles } from '../styles/inject';
 import { ScreenShareModal } from './modal-vanilla';
 import type { ThemeMode } from '../styles/theme';
 import type { ScreenShareConfig } from '../core/types';
+import { t, subscribeToLocale } from '../i18n';
 
 export interface VanillaButtonOptions {
   container: string | HTMLElement;
@@ -37,9 +38,17 @@ export function createScreenShareButton(opts: VanillaButtonOptions): HTMLButtonE
 
   const btn = document.createElement('button');
   btn.className = ['sssdk-trigger-btn', opts.className].filter(Boolean).join(' ');
-  btn.innerHTML = `${SCREEN_ICON} ${opts.label ?? 'Share screen'}`;
+  btn.innerHTML = `${SCREEN_ICON} ${opts.label ?? t('share.buttonIdle')}`;
 
   if (opts.style) Object.assign(btn.style, opts.style);
+
+  let isActive = false;
+
+  const updateLabel = () => {
+    btn.innerHTML = isActive
+      ? `${SCREEN_ICON} ${t('share.buttonActive')}`
+      : `${SCREEN_ICON} ${opts.label ?? t('share.buttonIdle')}`;
+  };
 
   // Single modal instance — holds all state for the entire lifetime of the button
   const modal = new ScreenShareModal({
@@ -47,17 +56,21 @@ export function createScreenShareButton(opts: VanillaButtonOptions): HTMLButtonE
     connection: opts.connection,
     themeMode: opts.themeMode,
     onSessionStart: () => {
+      isActive = true;
       btn.classList.add('active');
-      btn.innerHTML = `${SCREEN_ICON} Sharing…`;
+      updateLabel();
     },
     onSessionEnd: () => {
+      isActive = false;
       btn.classList.remove('active');
-      btn.innerHTML = `${SCREEN_ICON} ${opts.label ?? 'Share screen'}`;
+      updateLabel();
     },
     onClose: () => {
       // Button reflects sharing state even after the modal is closed
     },
   });
+
+  subscribeToLocale(updateLabel);
 
   btn.addEventListener('click', () => modal.open());
 

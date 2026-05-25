@@ -4,6 +4,7 @@ import { resolveThemeAttr, subscribeToTheme } from "../styles/theme";
 import type { ThemeMode } from "../styles/theme";
 import { ScreenShareSessionManager } from "../core/session-manager";
 import type { ScreenShareConfig, ScreenShareStatus } from "../core/types";
+import { useLocale } from "./use-locale";
 
 export interface ScreenShareButtonProps {
   label?: string;
@@ -73,7 +74,7 @@ const REFRESH_ICON = (
 );
 
 export function ScreenShareButton({
-  label = "Share screen",
+  label,
   className,
   style,
   config,
@@ -81,6 +82,7 @@ export function ScreenShareButton({
   themeMode = "auto",
   children,
 }: ScreenShareButtonProps) {
+  const [, , t] = useLocale();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<ScreenShareStatus>("idle");
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -106,7 +108,7 @@ export function ScreenShareButton({
   // Subscribe to setThemeMode() calls when in custom mode
   useEffect(() => {
     if (themeMode !== "custom") return;
-    return subscribeToTheme((t) => setCustomTheme(t));
+    return subscribeToTheme((resolvedTheme) => setCustomTheme(resolvedTheme));
   }, [themeMode]);
 
   const getManager = useCallback(() => {
@@ -143,7 +145,7 @@ export function ScreenShareButton({
 
   useEffect(() => {
     return () => {
-      stream?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((track) => track.stop());
     };
   }, [stream]);
 
@@ -210,7 +212,7 @@ export function ScreenShareButton({
   const handleClose = () => {
     // If actively sharing, keep the stream alive — just close the modal
     if (status !== "sharing") {
-      stream?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
     setOpen(false);
@@ -231,7 +233,7 @@ export function ScreenShareButton({
       await manager.replaceVideoTrack(newStream.getVideoTracks()[0]);
 
       // Stop the old stream
-      stream?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((track) => track.stop());
 
       setStream(newStream);
       newStream.getVideoTracks()[0]?.addEventListener("ended", () => {
@@ -263,7 +265,7 @@ export function ScreenShareButton({
   };
 
   const handleStop = () => {
-    stream?.getTracks().forEach((t) => t.stop());
+    stream?.getTracks().forEach((track) => track.stop());
     managerRef.current = null;
     setStatus("idle");
     setStream(null);
@@ -330,7 +332,7 @@ export function ScreenShareButton({
       onClick={handleOpen}
     >
       {SCREEN_ICON}
-      {triggerIsSharing ? "Sharing…" : label}
+      {triggerIsSharing ? t('share.buttonActive') : label ?? t('share.buttonIdle')}
     </button>
   );
 
@@ -355,7 +357,7 @@ export function ScreenShareButton({
                 <div className="sssdk-header">
                   <div className="sssdk-title">
                     <div className="sssdk-title-dot sharing" />
-                    Sharing active
+                    {t('share.titleSharing')}
                   </div>
                   <button className="sssdk-close" onClick={handleClose}>
                     ✕
@@ -374,14 +376,14 @@ export function ScreenShareButton({
                       objectFit: "contain",
                     }}
                   />
-                  <div className="sssdk-preview-badge">LIVE</div>
+                  <div className="sssdk-preview-badge">{t('share.badgeLive')}</div>
                 </div>
 
                 <div className="sssdk-sharing-status">
                   <div className="sssdk-sharing-info">
-                    <span className="sssdk-sharing-live">LIVE</span>
+                    <span className="sssdk-sharing-live">{t('share.badgeLive')}</span>
                     <span className="sssdk-sharing-text">
-                      Screen is being shared
+                      {t('share.screenBeingShared')}
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -395,13 +397,13 @@ export function ScreenShareButton({
                       }}
                       onClick={handleSwitchScreen}
                     >
-                      {SCREEN_ICON} Switch
+                      {SCREEN_ICON} {t('share.switch')}
                     </button>
                     <button
                       className="sssdk-btn sssdk-btn-stop"
                       onClick={handleStop}
                     >
-                      Stop
+                      {t('share.stop')}
                     </button>
                   </div>
                 </div>
@@ -415,8 +417,8 @@ export function ScreenShareButton({
                       className={`sssdk-title-dot${status === "connecting" ? " sharing" : ""}`}
                     />
                     {status === "connecting"
-                      ? "Connecting…"
-                      : "Share screen"}
+                      ? t('share.titleConnecting')
+                      : t('share.titleSetup')}
                   </div>
                   <button className="sssdk-close" onClick={handleClose}>
                     ✕
@@ -437,7 +439,7 @@ export function ScreenShareButton({
                           objectFit: "contain",
                         }}
                       />
-                      <div className="sssdk-preview-badge">PREVIEW</div>
+                      <div className="sssdk-preview-badge">{t('share.badgePreview')}</div>
                     </>
                   ) : permissionDenied ? (
                     // Permission denied state — show explanation and retry button
@@ -455,7 +457,7 @@ export function ScreenShareButton({
                         <path d="M12 8v4m0 4h.01" />
                       </svg>
                       <span style={{ color: "#ef4444", fontSize: 13 }}>
-                        Screen sharing permission was denied
+                        {t('share.permDenied')}
                       </span>
                       <span className="sssdk-permission-hint">
                         Click below to try again. If the browser keeps
@@ -467,14 +469,14 @@ export function ScreenShareButton({
                       {MONITOR_BIG}
                       <span>
                         {isPreferCurrentTab
-                          ? "Waiting for sharing permission…"
-                          : 'Click "Select screen" to continue'}
+                          ? t('share.waitingPermission')
+                          : t('share.clickToSelect')}
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="sssdk-section-label">Agent code</div>
+                <div className="sssdk-section-label">{t('share.agentCode')}</div>
                 <div className="sssdk-code-input-wrapper" onPaste={handlePaste}>
                   {code.map((d, i) => (
                     <input
@@ -503,7 +505,7 @@ export function ScreenShareButton({
                         className="sssdk-btn sssdk-btn-secondary"
                         onClick={() => doRequestScreen(getManager())}
                       >
-                        {REFRESH_ICON} Try again
+                        {REFRESH_ICON} {t('share.tryAgain')}
                       </button>
                     )
                   ) : (
@@ -511,7 +513,7 @@ export function ScreenShareButton({
                       className="sssdk-btn sssdk-btn-secondary"
                       onClick={handleSelectScreen}
                     >
-                      {SCREEN_ICON} Select screen
+                      {SCREEN_ICON} {t('share.selectScreen')}
                     </button>
                   )}
                   <button
@@ -526,10 +528,10 @@ export function ScreenShareButton({
                   >
                     {status === "connecting" ? (
                       <>
-                        <div className="sssdk-spinner" /> Connecting…
+                        <div className="sssdk-spinner" /> {t('share.titleConnecting')}
                       </>
                     ) : (
-                      "Connect"
+                      t('share.connect')
                     )}
                   </button>
                 </div>

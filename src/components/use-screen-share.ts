@@ -84,6 +84,10 @@ export function useScreenShare(
     setState({ status: "idle", stream: null, error: null, session: null });
   }, [state.session, state.stream]);
 
+  const pasteCode = useCallback((code: string) => {
+    getManager().pasteCode(code);
+  }, [getManager]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -92,5 +96,5 @@ export function useScreenShare(
     };
   }, []); // eslint-disable-line
 
-  return { state, requestScreen, startSession, stopSession };
+  return { state, requestScreen, startSession, stopSession, pasteCode };
 }

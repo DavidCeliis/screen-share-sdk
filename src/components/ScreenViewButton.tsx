@@ -4,6 +4,7 @@ import { resolveThemeAttr, subscribeToTheme } from "../styles/theme";
 import type { ThemeMode } from "../styles/theme";
 import { ScreenViewSessionManager } from "../core/viewer-session-manager";
 import type { ViewerConfig, ViewerStatus } from "../core/types";
+import { useLocale } from "./use-locale";
 
 export interface ScreenViewButtonProps {
   label?: string;
@@ -89,7 +90,7 @@ const COPY_ICON = (
 );
 
 export function ScreenViewButton({
-  label = "View screen",
+  label,
   className,
   style,
   config,
@@ -97,6 +98,7 @@ export function ScreenViewButton({
   themeMode = "auto",
   children,
 }: ScreenViewButtonProps) {
+  const [, , t] = useLocale();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<ViewerStatus>("idle");
   const [code, setCode] = useState<string | null>(null);
@@ -118,7 +120,7 @@ export function ScreenViewButton({
 
   useEffect(() => {
     if (themeMode !== "custom") return;
-    return subscribeToTheme((t) => setCustomTheme(t));
+    return subscribeToTheme((resolvedTheme) => setCustomTheme(resolvedTheme));
   }, [themeMode]);
 
   const getManager = useCallback(() => {
@@ -154,7 +156,7 @@ export function ScreenViewButton({
 
   useEffect(() => {
     return () => {
-      stream?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((track) => track.stop());
       managerRef.current?.endSession("user_stopped");
     };
   }, []); // eslint-disable-line
@@ -171,7 +173,7 @@ export function ScreenViewButton({
       doStartViewing(sessionCode);
     } catch (err: unknown) {
       const e = err as { message?: string };
-      setErrorMsg(e.message ?? "Registrace selhala");
+      setErrorMsg(e.message ?? t('view.registrationFailed'));
       setStatus("error");
     }
   }, [getManager]); // eslint-disable-line
@@ -184,7 +186,7 @@ export function ScreenViewButton({
       } catch (err: unknown) {
         if (!open) return;
         const e = err as { message?: string };
-        setErrorMsg(e.message ?? "Failed to connect");
+        setErrorMsg(e.message ?? t('view.failedToConnect'));
         setStatus("error");
       }
     },
@@ -214,7 +216,7 @@ export function ScreenViewButton({
   };
 
   const handleStop = () => {
-    stream?.getTracks().forEach((t) => t.stop());
+    stream?.getTracks().forEach((track) => track.stop());
     getManager().endSession("user_stopped");
     managerRef.current = null;
     setStream(null);
@@ -261,7 +263,7 @@ export function ScreenViewButton({
       onClick={handleOpen}
     >
       {EYE_ICON}
-      {isViewing ? "Viewing…" : label}
+      {isViewing ? t('view.buttonActive') : label ?? t('view.buttonIdle')}
     </button>
   );
 
@@ -290,7 +292,7 @@ export function ScreenViewButton({
                 <div className="sssdk-header">
                   <div className="sssdk-title">
                     <div className="sssdk-title-dot sharing" />
-                    Incoming screen
+                    {t('view.titleIncoming')}
                   </div>
                   <button className="sssdk-close" onClick={handleClose}>
                     ✕
@@ -311,17 +313,17 @@ export function ScreenViewButton({
                       style={{ position: "absolute", inset: 0, background: "transparent" }}
                     >
                       <div className="sssdk-spinner" style={{ width: 28, height: 28, borderWidth: 3 }} />
-                      <span style={{ fontSize: 13 }}>Establishing P2P connection…</span>
+                      <span style={{ fontSize: 13 }}>{t('view.p2pConnecting')}</span>
                     </div>
                   )}
-                  {videoPlaying && <div className="sssdk-preview-badge">LIVE</div>}
+                  {videoPlaying && <div className="sssdk-preview-badge">{t('view.badgeLive')}</div>}
                 </div>
 
                 <div className="sssdk-sharing-status">
                   <div className="sssdk-sharing-info">
-                    <span className="sssdk-sharing-live">LIVE</span>
+                    <span className="sssdk-sharing-live">{t('view.badgeLive')}</span>
                     <span className="sssdk-sharing-text">
-                      Viewing client's screen
+                      {t('view.viewingScreen')}
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -330,13 +332,13 @@ export function ScreenViewButton({
                       style={{ flex: 0, padding: "0 14px", height: 36, fontSize: 13 }}
                       onClick={handleFullscreen}
                     >
-                      {FULLSCREEN_ICON} Fullscreen
+                      {FULLSCREEN_ICON} {t('view.fullscreen')}
                     </button>
                     <button
                       className="sssdk-btn sssdk-btn-stop"
                       onClick={handleStop}
                     >
-                      Stop
+                      {t('view.stop')}
                     </button>
                   </div>
                 </div>
@@ -350,10 +352,10 @@ export function ScreenViewButton({
                       className={`sssdk-title-dot${status === "connecting" ? " sharing" : ""}`}
                     />
                     {status === "connecting"
-                      ? "Waiting for client…"
+                      ? t('view.titleWaiting')
                       : status === "registering"
-                        ? "Generating code…"
-                        : "View screen"}
+                        ? t('view.titleGenerating')
+                        : t('view.titleIdle')}
                   </div>
                   <button className="sssdk-close" onClick={handleClose}>
                     ✕
@@ -367,7 +369,7 @@ export function ScreenViewButton({
                         className="sssdk-section-label"
                         style={{ marginBottom: 14 }}
                       >
-                        Code for the client
+                        {t('view.codeForClient')}
                       </div>
                       <div className="sssdk-viewer-code-display">
                         {code.split("").map((d, i) => (
@@ -381,7 +383,7 @@ export function ScreenViewButton({
                         onClick={handleCopy}
                       >
                         {COPY_ICON}{" "}
-                        {copied ? "✓ Copied" : "Copy code"}
+                        {copied ? t('view.copied') : t('view.copyCode')}
                       </button>
                       <div className="sssdk-viewer-waiting-status">
                         <div className="sssdk-waiting-dots">
@@ -389,7 +391,7 @@ export function ScreenViewButton({
                           <span />
                           <span />
                         </div>
-                        <span>Waiting for client…</span>
+                        <span>{t('view.waitingForClient')}</span>
                       </div>
                     </div>
                   ) : status === "error" ? (
@@ -413,7 +415,7 @@ export function ScreenViewButton({
                   ) : (
                     <div className="sssdk-preview-placeholder">
                       {EYE_ICON_BIG}
-                      <span>Click the button to start</span>
+                      <span>{t('view.clickToStart')}</span>
                     </div>
                   )}
                 </div>
@@ -425,7 +427,7 @@ export function ScreenViewButton({
                       style={{ flex: 1 }}
                       onClick={handleClose}
                     >
-                      Cancel
+                      {t('view.cancel')}
                     </button>
                   ) : status === "error" ? (
                     <>
@@ -434,14 +436,14 @@ export function ScreenViewButton({
                         style={{ flex: 1 }}
                         onClick={handleClose}
                       >
-                        Close
+                        {t('view.close')}
                       </button>
                       <button
                         className="sssdk-btn sssdk-btn-primary"
                         style={{ flex: 1 }}
                         onClick={handleRetry}
                       >
-                        Try again
+                        {t('view.tryAgain')}
                       </button>
                     </>
                   ) : (
@@ -453,10 +455,10 @@ export function ScreenViewButton({
                     >
                       {status === "registering" ? (
                         <>
-                          <div className="sssdk-spinner" /> Generating code…
+                          <div className="sssdk-spinner" /> {t('view.titleGenerating')}
                         </>
                       ) : (
-                        "Generate code"
+                        t('view.generateCode')
                       )}
                     </button>
                   )}

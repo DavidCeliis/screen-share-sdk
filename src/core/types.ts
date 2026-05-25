@@ -119,6 +119,8 @@ export interface ViewerConfig {
   onSessionStart?: (code: string) => void;
   onSessionEnd?: (reason: "user_stopped" | "remote_disconnect" | "error") => void;
   onError?: (error: ScreenShareError) => void;
+  /** Called when the sender pastes a code snippet via pasteCode() */
+  onCodeReceived?: (code: string) => void;
 }
 
 export type ViewerStatus =
