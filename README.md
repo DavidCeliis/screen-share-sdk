@@ -299,7 +299,7 @@ config: { displaySurface: 'window', ... }
 config: { displaySurface: 'browser', ... } // or omit
 ```
 
-> As soon as you set anything other than `"browser"`, the `currentTab` optimisation (see below) is automatically ignored — the user always sees the standard picker regardless of browser.
+> As soon as you set anything other than `"browser"`, the `currentTab` optimisation (see below) is automatically ignored — the user always sees the standard picker regardless of browser. The current tab is still offered in the picker (`selfBrowserSurface: "include"` is always passed — Chrome 107+ would otherwise hide it by default).
 
 ### Current tab support (`currentTab`)
 
@@ -311,6 +311,8 @@ The SDK auto-detects what the browser supports and picks the best available meth
 | Firefox 116+ | `selfBrowserSurface` | Current tab appears in the picker |
 | Safari / older FF | `manual` | Standard picker, tab not in the list — user must pick another surface |
 | Mobile / old browser | `unsupported` | Alert with explanation, sharing is not possible |
+
+Regardless of the mode, `selfBrowserSurface: "include"` is always passed to `getDisplayMedia`, so the current tab is offered in the picker in every configuration (browsers that don't know the option ignore it).
 
 Manual override values:
 

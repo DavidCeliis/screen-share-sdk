@@ -136,15 +136,16 @@ export class ScreenShareSessionManager {
       ...(preferredSurface !== "any" && { displaySurface: preferredSurface }),
     };
 
-    const extraOptions: Record<string, unknown> = {};
+    // Chrome 107+ hides the current tab from the picker by default
+    // ("hall of mirrors" protection) — always offer it; other browsers
+    // ignore the option
+    const extraOptions: Record<string, unknown> = {
+      selfBrowserSurface: "include",
+    };
 
-    // currentTab optimizations only make sense for browser-tab capture
-    if (preferredSurface === "browser") {
-      if (mode === "preferCurrentTab") {
-        extraOptions["preferCurrentTab"] = true;
-      } else if (mode === "selfBrowserSurface") {
-        extraOptions["selfBrowserSurface"] = "include";
-      }
+    // Skipping the picker entirely only makes sense for browser-tab capture
+    if (preferredSurface === "browser" && mode === "preferCurrentTab") {
+      extraOptions["preferCurrentTab"] = true;
     }
 
     try {
