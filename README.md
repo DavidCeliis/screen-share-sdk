@@ -174,6 +174,7 @@ setThemeMode('light'); // updates the open modal immediately
 | `videoQuality` | see below | `"medium"` | Resolution and FPS of the outgoing video |
 | `displaySurface` | see below | `"browser"` | What the user can share — tab / window / monitor / anything |
 | `currentTab` | see below | auto | Overrides automatic tab-capture mode detection |
+| `remoteCursor` | see below | enabled | Rendering of the viewer's cursor on the shared page |
 | `onSessionStart` | `(id: string) => void` | — | Called when the session is successfully established |
 | `onSessionEnd` | `(reason) => void` | — | Called when sharing ends |
 | `onError` | `(err) => void` | — | Error callback |
@@ -206,6 +207,52 @@ config: {
 ```
 
 > Values are passed as `{ ideal, max }` constraints to `getDisplayMedia` — the browser tries to honour them, but the actual resolution may also depend on system capabilities, especially when sharing a full screen or window.
+
+### Remote cursor (`remoteCursor`)
+
+The viewer (agent) can point at things on the shared screen: their mouse
+position over the incoming video is streamed back over WebRTC (a dedicated
+unreliable data channel — low latency, no server involved) and rendered on the
+sharing page as a colored overlay cursor.
+
+**Enabled by default on both sides.** Configuration:
+
+```js
+// Sharer side (ScreenShareConfig) — how the cursor is drawn
+config: {
+  remoteCursor: {
+    enabled: true,        // false disables rendering entirely
+    color: '#ef4444',     // any CSS color
+    size: 22,             // arrow height in px
+    label: 'Operátor',    // optional name tag next to the cursor
+    hideAfterMs: 3000,    // auto-hide after inactivity
+  }
+}
+
+// Viewer side (ViewerConfig) — sending can be turned off
+viewerConfig: {
+  cursorSharing: false,   // default: true
+}
+```
+
+Coordinates are normalized to the captured frame, so video scaling and
+letterboxing are handled automatically. The overlay is positioned relative to
+the page viewport — it aligns with what the viewer sees when the **current tab**
+is shared (the default). When a different window or monitor is shared, the
+cursor still renders on the SDK page but cannot point outside of it.
+
+The built-in viewer modal attaches tracking automatically (including
+fullscreen). With the `useScreenView` hook, attach it to your own `<video>`:
+
+```tsx
+const { state, startViewing, attachCursorTracking } = useScreenView(config);
+
+useEffect(() => {
+  if (videoRef.current && state.status === 'viewing') {
+    return attachCursorTracking(videoRef.current); // returns cleanup fn
+  }
+}, [state.status]);
+```
 
 ### ICE servers — STUN / TURN (`iceServers`)
 
@@ -368,7 +415,7 @@ pasteCode('const x = 42;');
 ### `useScreenView(config?, connection?)` (React hook)
 
 ```tsx
-const { state, register, startViewing, stopViewing } = useScreenView({
+const { state, register, startViewing, stopViewing, attachCursorTracking } = useScreenView({
   ...config,
   onCodeReceived: (code) => console.log('received:', code),
 });

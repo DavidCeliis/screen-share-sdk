@@ -154,6 +154,14 @@ export function ScreenViewButton({
     }
   }, [stream, open]);
 
+  // Stream the mouse position over the video back to the sharer,
+  // where it is rendered as the remote cursor
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !stream || status !== "viewing") return;
+    return getManager().attachCursorTracking(video);
+  }, [stream, status, open, getManager]);
+
   useEffect(() => {
     return () => {
       stream?.getTracks().forEach((track) => track.stop());

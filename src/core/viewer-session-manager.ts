@@ -1,10 +1,16 @@
 import { createAdapter, SignalRAdapter } from "../adapters/signalr-adapter";
+import {
+  attachCursorTracking,
+  CURSOR_CHANNEL_LABEL,
+  type CursorMessage,
+} from "./cursor";
 import type { ViewerConfig, ScreenShareError } from "./types";
 
 export class ScreenViewSessionManager {
   private config: ViewerConfig;
   private adapter: SignalRAdapter | null = null;
   private peerConnection: RTCPeerConnection | null = null;
+  private cursorChannel: RTCDataChannel | null = null;
   private currentCode: string | null = null;
   private existingConnection: unknown;
 
@@ -104,6 +110,10 @@ export class ScreenViewSessionManager {
 
     this.peerConnection.ondatachannel = (event) => {
       const channel = event.channel;
+      if (channel.label === CURSOR_CHANNEL_LABEL) {
+        this.cursorChannel = channel;
+        return;
+      }
       channel.onmessage = (e: MessageEvent) => {
         if (typeof e.data === "string") {
           this.config.onCodeReceived?.(e.data);
@@ -163,12 +173,44 @@ export class ScreenViewSessionManager {
     return streamPromise;
   }
 
+  /**
+   * Sends a cursor message to the sharing side. No-op when cursor sharing
+   * is disabled or the cursor channel is not open (yet).
+   */
+  sendCursorMessage(msg: CursorMessage): void {
+    if (this.config.cursorSharing === false) return;
+    if (!this.cursorChannel || this.cursorChannel.readyState !== "open") return;
+    this.cursorChannel.send(JSON.stringify(msg));
+  }
+
+  /**
+   * Starts streaming the mouse position over the given <video> element back
+   * to the sharer (drawn there as a colored cursor). Coordinates are
+   * normalized to the video content, so scaling/letterbox is handled.
+   *
+   * Returns a cleanup function that detaches the listeners.
+   */
+  attachCursorTracking(video: HTMLVideoElement): () => void {
+    if (this.config.cursorSharing === false || this.config.testMode) {
+      return () => {};
+    }
+    return attachCursorTracking(video, (msg) => this.sendCursorMessage(msg));
+  }
+
   endSession(
     reason: "user_stopped" | "remote_disconnect" | "error" = "user_stopped",
   ): void {
     if (!this.currentCode) return;
     const code = this.currentCode;
     this.currentCode = null;
+    if (this.cursorChannel?.readyState === "open") {
+      try {
+        this.cursorChannel.send(JSON.stringify({ t: "hide" }));
+      } catch {
+        /* channel already closing */
+      }
+    }
+    this.cursorChannel = null;
     this.peerConnection?.close();
     this.peerConnection = null;
 

@@ -1,3 +1,5 @@
+import type { RemoteCursorOptions } from "./cursor";
+
 export interface VideoQualityCustom {
   width?: number;
   height?: number;
@@ -73,6 +75,16 @@ export interface ScreenShareConfig {
   /** 'client' = shares screen, 'agent' = views (default: 'client') */
   role?: "agent" | "client";
 
+  /**
+   * Rendering of the remote operator's cursor on this (sharing) page.
+   * The viewer sends cursor positions back over WebRTC; they are drawn
+   * as a colored overlay cursor so the operator can point at things.
+   *
+   * Enabled by default — pass `{ enabled: false }` to turn it off.
+   * `{ color, size, label }` customize the appearance.
+   */
+  remoteCursor?: RemoteCursorOptions;
+
   /** Called when screen share session starts */
   onSessionStart?: (sessionId: string) => void;
 
@@ -121,6 +133,13 @@ export interface ViewerConfig {
   onError?: (error: ScreenShareError) => void;
   /** Called when the sender pastes a code snippet via pasteCode() */
   onCodeReceived?: (code: string) => void;
+
+  /**
+   * When true (default), the viewer's mouse position over the incoming video
+   * is streamed back to the sharer, where it is rendered as a colored cursor.
+   * Set to false to disable sending cursor positions.
+   */
+  cursorSharing?: boolean;
 }
 
 export type ViewerStatus =
