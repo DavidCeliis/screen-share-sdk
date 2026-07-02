@@ -38,6 +38,14 @@ export {
   createAdapter,
 } from "./adapters/signalr-adapter";
 
+// ─── Remote cursor ─────────────────────────────────────────────
+export {
+  RemoteCursorRenderer,
+  attachCursorTracking,
+  CURSOR_CHANNEL_LABEL,
+} from "./core/cursor";
+export type { RemoteCursorOptions, CursorMessage } from "./core/cursor";
+
 // ─── Types ─────────────────────────────────────────────
 export type {
   ScreenShareConfig,

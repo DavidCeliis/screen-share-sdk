@@ -12,6 +12,9 @@ export { createScreenViewButton } from './components/viewer-button-vanilla';
 export { ScreenViewModal } from './components/viewer-modal-vanilla';
 export { ScreenViewSessionManager } from './core/viewer-session-manager';
 
+export { RemoteCursorRenderer, attachCursorTracking } from './core/cursor';
+export type { RemoteCursorOptions, CursorMessage } from './core/cursor';
+
 export type {
   ScreenShareConfig,
   ScreenShareError,

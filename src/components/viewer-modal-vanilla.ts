@@ -34,6 +34,7 @@ export class ScreenViewModal {
   private code: string | null = null;
   private stream: MediaStream | null = null;
   private isViewing: boolean = false;
+  private _detachCursor: (() => void) | null = null;
 
   private _unsubLocale: (() => void) | null = null;
 
@@ -95,6 +96,8 @@ export class ScreenViewModal {
   }
 
   private _closeOverlay(): void {
+    this._detachCursor?.();
+    this._detachCursor = null;
     this.overlay?.remove();
     this.overlay = null;
     this.opts.onClose?.();
@@ -378,6 +381,8 @@ export class ScreenViewModal {
       video.playsInline = true;
       video.style.cssText = "width:100%;height:100%;object-fit:contain";
       video.srcObject = this.stream;
+      this._detachCursor?.();
+      this._detachCursor = this.manager.attachCursorTracking(video);
       video.addEventListener("playing", () => {
         document.getElementById("sssdk-p2p-loading")?.remove();
         preview.querySelector<HTMLElement>(".sssdk-preview-badge")?.remove();

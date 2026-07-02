@@ -62,6 +62,16 @@ export function useScreenView(config?: ViewerConfig, connection?: unknown) {
     [getManager],
   );
 
+  /**
+   * Attach to the <video> element showing the incoming stream — the mouse
+   * position over it is sent to the sharer and rendered there as a cursor.
+   * Returns a cleanup function (call it when the video unmounts).
+   */
+  const attachCursorTracking = useCallback(
+    (video: HTMLVideoElement) => getManager().attachCursorTracking(video),
+    [getManager],
+  );
+
   const stopViewing = useCallback(() => {
     state.stream?.getTracks().forEach((t) => t.stop());
     getManager().endSession("user_stopped");
@@ -75,5 +85,5 @@ export function useScreenView(config?: ViewerConfig, connection?: unknown) {
     };
   }, []); // eslint-disable-line
 
-  return { state, register, startViewing, stopViewing };
+  return { state, register, startViewing, stopViewing, attachCursorTracking };
 }

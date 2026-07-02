@@ -1,4 +1,9 @@
 import { createAdapter, SignalRAdapter } from "../adapters/signalr-adapter";
+import {
+  CURSOR_CHANNEL_LABEL,
+  parseCursorMessage,
+  RemoteCursorRenderer,
+} from "./cursor";
 import { t } from "../i18n";
 import type {
   ScreenShareConfig,
@@ -82,6 +87,8 @@ export class ScreenShareSessionManager {
   private adapter: SignalRAdapter | null = null;
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
+  private cursorChannel: RTCDataChannel | null = null;
+  private cursorRenderer: RemoteCursorRenderer | null = null;
   private currentSession: ScreenShareSession | null = null;
   private existingConnection: unknown;
   private pendingCandidates: RTCIceCandidateInit[] = [];
@@ -225,6 +232,20 @@ export class ScreenShareSessionManager {
 
     this.dataChannel = this.peerConnection.createDataChannel("code", { ordered: true });
 
+    // Cursor positions from the viewer — unreliable/unordered: a stale
+    // position is worthless, low latency matters more than delivery
+    if (this.config.remoteCursor?.enabled !== false) {
+      this.cursorChannel = this.peerConnection.createDataChannel(
+        CURSOR_CHANNEL_LABEL,
+        { ordered: false, maxRetransmits: 0 },
+      );
+      this.cursorRenderer = new RemoteCursorRenderer(this.config.remoteCursor);
+      this.cursorChannel.onmessage = (e: MessageEvent) => {
+        const msg = parseCursorMessage(e.data);
+        if (msg) this.cursorRenderer?.handleMessage(msg);
+      };
+    }
+
     this.peerConnection.onconnectionstatechange = () => {
       if (!this.peerConnection) return;
       const state = this.peerConnection.connectionState;
@@ -308,6 +329,10 @@ export class ScreenShareSessionManager {
     this.currentSession.stream?.getTracks().forEach((t) => t.stop());
     this.dataChannel?.close();
     this.dataChannel = null;
+    this.cursorChannel?.close();
+    this.cursorChannel = null;
+    this.cursorRenderer?.destroy();
+    this.cursorRenderer = null;
     this.peerConnection?.close();
     this.peerConnection = null;
     this.pendingCandidates = [];
